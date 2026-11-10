@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vyapar Pro — Database Manager</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for creating and reading real .dta zip archives -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #e11d48 0%, #f97316 50%, #7c3aed 100%);
+        }
+
+        body {
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(225, 29, 72, 0.06) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(124, 58, 237, 0.06) 0px, transparent 50%);
+        }
+
+        .bg-brand-gradient {
+            background: var(--primary-gradient);
+        }
+
+        .text-brand-gradient {
+            background: var(--primary-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* 2-Second Splash Animations */
+        @keyframes loadTwoSeconds {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        @keyframes pulseFloat {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-8px) scale(1.04); }
+        }
+
+        .animate-splash-bar {
+            animation: loadTwoSeconds 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        .animate-float {
+            animation: pulseFloat 1.8s infinite ease-in-out;
+        }
+
+        /* Spinner Animation */
+        @keyframes spinRing {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner-ring {
+            border: 4px solid #f1f5f9;
+            border-top: 4px solid #e11d48;
+            border-right: 4px solid #7c3aed;
+            animation: spinRing 0.85s linear infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center text-slate-900 overflow-x-hidden select-none">
+
+    <!-- Hidden Fallback File Input for Browsers without File System Access API -->
+    <input type="file" id="db-file-input" accept=".dta,.zip" class="hidden">
+
+    <!-- ================= 1. 2-SECOND SPLASH SCREEN ================= -->
+    <div id="splash-screen" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center transition-all duration-500">
+        <div class="w-20 h-20 rounded-3xl bg-brand-gradient flex items-center justify-center shadow-xl shadow-rose-500/30 animate-float mb-6">
+            <svg class="w-11 h-11 fill-white" viewBox="0 0 24 24">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+        </div>
+        <h1 class="text-3xl font-extrabold text-brand-gradient tracking-tight mb-2">Vyapar Billing Suite</h1>
+        <p class="text-sm text-slate-500 font-medium mb-8">Offline-First GST Accounting &amp; Inventory Engine</p>
+        <div class="w-60 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full bg-brand-gradient rounded-full animate-splash-bar"></div>
+        </div>
+    </div>
+
+    <!-- ================= 2. CREATE / SELECT DATABASE SCREEN ================= -->
+    <main id="welcome-screen" class="w-full max-w-4xl px-5 py-8 opacity-0 translate-y-5 transition-all duration-500">
+        <div class="text-center mb-10">
+            <span class="inline-block px-3.5 py-1.5 rounded-full bg-rose-100 text-rose-600 text-xs font-bold uppercase tracking-wider mb-3">
+                Database Launcher
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">
+                Select or Initialize Company Database
+            </h2>
+            <p class="text-slate-500 text-sm sm:text-base max-w-xl mx-auto">
+                Create a new compressed <strong class="text-slate-700">.dta</strong> workspace file or open an existing database from your file manager.
+            </p>
+        </div>
+
+        <!-- Custom Toast / Alert Message Box (Replaces alert()) -->
+        <div id="toast-box" class="hidden max-w-xl mx-auto mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <span id="toast-message">Error message</span>
+            </div>
+            <button onclick="hideToast()" class="text-red-400 hover:text-red-700 font-bold px-2">&times;</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Create New Database Card -->
+            <button type="button" onclick="openCreateModal()" class="group relative bg-white border-2 border-slate-200 hover:border-rose-500 rounded-3xl p-8 text-center shadow-lg shadow-slate-200/60 hover:shadow-xl hover:shadow-rose-500/10 transition-all duration-300 hover:-translate-y-1.5 overflow-hidden">
+                <div class="absolute top-0 inset-x-0 h-1.5 bg-brand-gradient opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 mx-auto mb-5 flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform">
+                    <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">Create New Database</h3>
+                <p class="text-sm text-slate-500 leading-relaxed mb-6">
+                    Name your new company database, zip it into a portable <strong class="text-slate-700">.dta</strong> file, choose save location, and launch Setup.
+                </p>
+                <span class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white text-sm font-bold transition-colors">
+                    Create Database &rarr;
+                </span>
+            </button>
+
+            <!-- Select Existing Database Card -->
+            <button type="button" onclick="triggerSelectDatabase()" class="group relative bg-white border-2 border-slate-200 hover:border-violet-600 rounded-3xl p-8 text-center shadow-lg shadow-slate-200/60 hover:shadow-xl hover:shadow-violet-600/10 transition-all duration-300 hover:-translate-y-1.5 overflow-hidden">
+                <div class="absolute top-0 inset-x-0 h-1.5 bg-brand-gradient opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-16 h-16 rounded-2xl bg-violet-50 text-violet-600 mx-auto mb-5 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform">
+                    <svg class="w-8 h-8 fill-current" viewBox="0 0 24 24">
+                        <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">Select Existing Database</h3>
+                <p class="text-sm text-slate-500 leading-relaxed mb-6">
+                    Open your file manager to pick an existing <strong class="text-slate-700">.dta</strong> file. Routes directly to Login if configured, or Setup if incomplete.
+                </p>
+                <span class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white text-sm font-bold transition-colors">
+                    Open File Manager &rarr;
+                </span>
+            </button>
+        </div>
+    </main>
+
+    <!-- ================= 3. CREATE DATABASE NAME POPUP MODAL ================= -->
+    <div id="create-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 flex items-center justify-center p-4 opacity-0 invisible transition-all duration-200">
+        <div id="create-modal-box" class="bg-white w-full max-w-md rounded-3xl p-7 shadow-2xl scale-95 transition-all duration-200">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-xl font-extrabold text-slate-900">Create Database</h3>
+                <button type="button" onclick="closeCreateModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold transition-colors">
+                    &times;
+                </button>
+            </div>
+
+            <div class="mb-6">
+                <label for="db-name-input" class="block text-sm font-semibold text-slate-700 mb-2">
+                    Database File Name
+                </label>
+                <div class="flex items-center border-2 border-slate-200 focus-within:border-rose-500 rounded-2xl overflow-hidden transition-colors">
+                    <input type="text" id="db-name-input" placeholder="Enter business database name" autocomplete="off" class="w-full px-4 py-3.5 text-base font-semibold text-slate-900 outline-none">
+                    <span class="px-4 py-3.5 bg-slate-100 text-slate-500 font-bold text-sm border-l border-slate-200">
+                        .dta
+                    </span>
+                </div>
+                <p id="name-error" class="hidden text-xs font-semibold text-red-500 mt-2">
+                    Please enter a valid database name (letters, numbers, spaces, hyphens, or underscores).
+                </p>
+            </div>
+
+            <button type="button" onclick="proceedCreateDatabase()" class="w-full py-3.5 px-6 rounded-2xl bg-brand-gradient text-white font-bold text-base shadow-lg shadow-rose-500/30 hover:shadow-xl hover:shadow-rose-500/40 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                <span>Proceed</span>
+                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= 4. ZIPPING & ROUTING LOADING OVERLAY ================= -->
+    <div id="processing-overlay" class="fixed inset-0 bg-white/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 opacity-0 invisible transition-all duration-300">
+        <div class="w-16 h-16 rounded-full spinner-ring mb-5"></div>
+        <h3 id="proc-title" class="text-xl font-extrabold text-slate-900 mb-1.5 text-center">Packaging Database (.dta)...</h3>
+        <p id="proc-desc" class="text-sm text-slate-500 font-medium text-center max-w-md">Initializing workspace structures...</p>
+    </div>
+
+    <script>
+        // ================= INDEXEDDB HANDLE PERSISTENCE =================
+        // Stores the FileSystemFileHandle so setup.html and login.html can read/write directly to the user's .dta file
+        const IDB_NAME = 'VyaparDBStorage';
+        const IDB_STORE = 'fileHandles';
+
+        function openHandleDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = () => {
+                    req.result.createObjectStore(IDB_STORE);
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function saveFileHandleToIDB(handle) {
+            try {
+                const db = await openHandleDB();
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).put(handle, 'activeDtaHandle');
+                return new Promise((resolve) => {
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => resolve(false);
+                });
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // ================= CUSTOM NOTIFICATION HELPERS =================
+        function showToast(msg) {
+            const box = document.getElementById('toast-box');
+            document.getElementById('toast-message').textContent = msg;
+            box.classList.remove('hidden');
+        }
+
+        function hideToast() {
+            document.getElementById('toast-box').classList.add('hidden');
+        }
+
+        // ================= 1. 2-SECOND SPLASH SCREEN =================
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                const welcome = document.getElementById('welcome-screen');
+                splash.classList.add('opacity-0', 'invisible', 'pointer-events-none');
+                welcome.classList.remove('opacity-0', 'translate-y-5');
+            }, 2000);
+        });
+
+        // ================= 2. MODAL CONTROLS =================
+        const modal = document.getElementById('create-modal');
+        const modalBox = document.getElementById('create-modal-box');
+        const dbInput = document.getElementById('db-name-input');
+        const nameError = document.getElementById('name-error');
+
+        function openCreateModal() {
+            hideToast();
+            nameError.classList.add('hidden');
+            dbInput.value = '';
+            modal.classList.remove('opacity-0', 'invisible');
+            modalBox.classList.remove('scale-95');
+            modalBox.classList.add('scale-100');
+            setTimeout(() => dbInput.focus(), 120);
+        }
+
+        function closeCreateModal() {
+            modal.classList.add('opacity-0', 'invisible');
+            modalBox.classList.remove('scale-100');
+            modalBox.classList.add('scale-95');
+        }
+
+        dbInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') proceedCreateDatabase();
+        });
+
+        // ================= 3. CREATE & ZIP INTO .DTA + FILE MANAGER SAVE =================
+        async function proceedCreateDatabase() {
+            const rawName = dbInput.value.trim();
+            const cleanName = rawName.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim();
+
+            if (!cleanName) {
+                nameError.classList.remove('hidden');
+                dbInput.focus();
+                return;
+            }
+
+            nameError.classList.add('hidden');
+            closeCreateModal();
+
+            const fileName = `${cleanName}.dta`;
+
+            // Build real initial database schema inside a ZIP (.dta)
+            const zip = new JSZip();
+            const initialMeta = {
+                dbName: cleanName,
+                fileName: fileName,
+                createdAt: new Date().toISOString(),
+                isSetupComplete: false,
+                schemaVersion: 1
+            };
+
+            zip.file("meta.json", JSON.stringify(initialMeta, null, 2));
+            zip.file("company.json", JSON.stringify({}, null, 2));
+            zip.file("auth.json", JSON.stringify({}, null, 2));
+            zip.file("parties.json", JSON.stringify([], null, 2));
+            zip.file("items.json", JSON.stringify([], null, 2));
+            zip.file("invoices.json", JSON.stringify([], null, 2));
+            zip.file("purchases.json", JSON.stringify([], null, 2));
+
+            try {
+                const dtaBlob = await zip.generateAsync({
+                    type: "blob",
+                    compression: "DEFLATE",
+                    compressionOptions: { level: 6 }
+                });
+
+                if ('showSaveFilePicker' in window) {
+                    const fileHandle = await window.showSaveFilePicker({
+                        suggestedName: fileName,
+                        types: [{
+                            description: 'Vyapar Database Archive (.dta)',
+                            accept: { 'application/octet-stream': ['.dta'] }
+                        }]
+                    });
+
+                    showProcessingLoader(
+                        "Zipping Database (.dta)...",
+                        `Saving ${fileName} and preparing Setup...`
+                    );
+
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(dtaBlob);
+                    await writable.close();
+
+                    await saveFileHandleToIDB(fileHandle);
+                } else {
+                    showProcessingLoader(
+                        "Zipping Database (.dta)...",
+                        `Downloading ${fileName} and preparing Setup...`
+                    );
+
+                    const url = URL.createObjectURL(dtaBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+
+                // Store active database metadata and base64 archive backup in session/local storage
+                const base64Archive = await zip.generateAsync({ type: "base64" });
+                sessionStorage.setItem('vyapar_active_archive_b64', base64Archive);
+                localStorage.setItem('vyapar_active_meta', JSON.stringify(initialMeta));
+
+                setTimeout(() => {
+                    window.location.href = 'setup.html';
+                }, 1400);
+
+            } catch (err) {
+                hideProcessingLoader();
+                if (err.name !== 'AbortError') {
+                    showToast("Failed to save database file: " + err.message);
+                }
+            }
+        }
+
+        // ================= 4. SELECT EXISTING .DTA DATABASE & ROUTE =================
+        const fileInput = document.getElementById('db-file-input');
+
+        async function triggerSelectDatabase() {
+            hideToast();
+            if ('showOpenFilePicker' in window) {
+                try {
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        types: [{
+                            description: 'Vyapar Database File (.dta)',
+                            accept: { 'application/octet-stream': ['.dta', '.zip'] }
+                        }],
+                        multiple: false
+                    });
+                    await saveFileHandleToIDB(fileHandle);
+                    const file = await fileHandle.getFile();
+                    await inspectAndRouteDatabase(file);
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        fileInput.click();
+                    }
+                }
+            } else {
+                fileInput.click();
+            }
+        }
+
+        fileInput.addEventListener('change', async (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                await inspectAndRouteDatabase(e.target.files[0]);
+                e.target.value = '';
+            }
+        });
+
+        async function inspectAndRouteDatabase(file) {
+            showProcessingLoader(
+                "Opening Database (.dta)...",
+                `Unpacking ${file.name} and checking setup status...`
+            );
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+                const metaFile = zip.file("meta.json");
+
+                if (!metaFile) {
+                    throw new Error("Invalid database file: meta.json not found inside .dta archive.");
+                }
+
+                const metaText = await metaFile.async("string");
+                const metaData = JSON.parse(metaText);
+
+                // Cache full archive in sessionStorage so setup.html or login.html can read it immediately
+                const base64Archive = await zip.generateAsync({ type: "base64" });
+                sessionStorage.setItem('vyapar_active_archive_b64', base64Archive);
+                localStorage.setItem('vyapar_active_meta', JSON.stringify(metaData));
+
+                setTimeout(() => {
+                    if (metaData.isSetupComplete === true) {
+                        document.getElementById('proc-title').textContent = "Database Ready";
+                        document.getElementById('proc-desc').textContent = "Company setup verified. Opening Login...";
+                        setTimeout(() => {
+                            window.location.href = 'login.html';
+                        }, 700);
+                    } else {
+                        document.getElementById('proc-title').textContent = "Setup Required";
+                        document.getElementById('proc-desc').textContent = "Database not configured yet. Opening Setup...";
+                        setTimeout(() => {
+                            window.location.href = 'setup.html';
+                        }, 700);
+                    }
+                }, 900);
+
+            } catch (error) {
+                hideProcessingLoader();
+                showToast("Could not open database: " + error.message);
+            }
+        }
+
+        function showProcessingLoader(title, desc) {
+            document.getElementById('proc-title').textContent = title;
+            document.getElementById('proc-desc').textContent = desc;
+            const overlay = document.getElementById('processing-overlay');
+            overlay.classList.remove('opacity-0', 'invisible');
+        }
+
+        function hideProcessingLoader() {
+            const overlay = document.getElementById('processing-overlay');
+            overlay.classList.add('opacity-0', 'invisible');
+        }
+    </script>
+</body>
+</html>
