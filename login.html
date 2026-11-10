@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vyapar Pro — Company Login</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for reading the .dta zip archive -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #e11d48 0%, #f97316 50%, #7c3aed 100%);
+        }
+
+        body {
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(225, 29, 72, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(124, 58, 237, 0.08) 0px, transparent 50%);
+        }
+
+        .bg-brand-gradient {
+            background: var(--primary-gradient);
+        }
+
+        .text-brand-gradient {
+            background: var(--primary-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Initial Company Logo Loader Animation */
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); box-shadow: 0 20px 35px -10px rgba(225, 29, 72, 0.35); }
+            50% { transform: scale(1.05); box-shadow: 0 25px 45px -8px rgba(124, 58, 237, 0.45); }
+        }
+
+        .animate-logo-pulse {
+            animation: pulseGlow 1.8s infinite ease-in-out;
+        }
+
+        @keyframes progressFill {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+
+        .animate-load-bar {
+            animation: progressFill 1.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        /* Enabled Login Button Pop Animation */
+        @keyframes btnUnlock {
+            0% { transform: scale(0.98); }
+            60% { transform: scale(1.015); }
+            100% { transform: scale(1); }
+        }
+
+        .btn-login-enabled {
+            animation: btnUnlock 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* Error Shake Animation */
+        @keyframes shakeError {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        .animate-shake {
+            animation: shakeError 0.4s ease-in-out;
+        }
+
+        /* Spinner Ring */
+        @keyframes spinRing {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner-ring {
+            border: 4px solid #f1f5f9;
+            border-top: 4px solid #e11d48;
+            border-right: 4px solid #7c3aed;
+            animation: spinRing 0.85s linear infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-6 text-slate-900 overflow-x-hidden select-none">
+
+    <!-- ================= 1. INITIAL COMPANY LOGO LOADING SCREEN ================= -->
+    <div id="company-loader" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-6 transition-all duration-500">
+        <div class="w-24 h-24 rounded-3xl bg-white border-2 border-slate-100 flex items-center justify-center overflow-hidden animate-logo-pulse mb-5">
+            <!-- Dynamic Company Logo or Default Fallback Icon -->
+            <img id="splash-company-logo" src="" alt="Company Logo" class="hidden w-full h-full object-cover">
+            <div id="splash-default-icon" class="w-full h-full bg-brand-gradient flex items-center justify-center">
+                <svg class="w-11 h-11 fill-white" viewBox="0 0 24 24">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+            </div>
+        </div>
+        <h2 id="splash-company-name" class="text-2xl font-extrabold text-slate-900 tracking-tight mb-1 text-center">
+            Loading Company...
+        </h2>
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-6">
+            Mounting Encrypted .dta Workspace
+        </p>
+        <div class="w-56 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full bg-brand-gradient rounded-full animate-load-bar"></div>
+        </div>
+    </div>
+
+    <!-- ================= 2. MODERN LOGIN CARD ================= -->
+    <main id="login-card" class="w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-slate-200/80 border border-slate-100 overflow-hidden opacity-0 translate-y-4 transition-all duration-500">
+        
+        <!-- Top Decorative Banner & Business Logo Header -->
+        <div class="relative pt-8 pb-6 px-6 sm:px-8 text-center bg-gradient-to-b from-rose-50/60 via-violet-50/30 to-white border-b border-slate-100">
+            <!-- Switch Database Link -->
+            <div class="flex items-center justify-between mb-4">
+                <a href="index.html" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                    <span>Switch Database</span>
+                </a>
+                <span id="db-badge" class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold truncate max-w-[160px]">
+                    company.dta
+                </span>
+            </div>
+
+            <!-- Business Logo Avatar -->
+            <div class="w-24 h-24 rounded-3xl bg-white border-2 border-white shadow-xl shadow-rose-500/15 mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                <img id="login-company-logo" src="" alt="Shop Logo" class="hidden w-full h-full object-cover">
+                <div id="login-default-logo" class="w-full h-full bg-brand-gradient flex items-center justify-center">
+                    <svg class="w-11 h-11 fill-white" viewBox="0 0 24 24">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Business Name & Owner Tag -->
+            <h1 id="login-business-name" class="text-2xl font-extrabold text-slate-900 tracking-tight">
+                My Business
+            </h1>
+            <p id="login-owner-subtitle" class="text-xs font-semibold text-slate-500 mt-1">
+                Sign in with your registered Mobile Number or Email
+            </p>
+        </div>
+
+        <!-- Custom Error Alert Box -->
+        <div id="login-error-box" class="hidden mx-6 sm:mx-8 mt-6 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm font-semibold flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <span id="login-error-msg">Invalid credentials.</span>
+            </div>
+            <button type="button" onclick="hideLoginError()" class="text-red-400 hover:text-red-700 font-bold pl-2">&times;</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="p-6 sm:p-8 space-y-5" onsubmit="handleLoginSubmit(event)">
+            
+            <!-- Mobile No or Email Input -->
+            <div>
+                <div class="flex items-center justify-between mb-1.5">
+                    <label for="login-identifier" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">
+                        Mobile Number or Email *
+                    </label>
+                    <span id="detected-type-badge" class="hidden text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-50 text-violet-600">
+                        Mobile
+                    </span>
+                </div>
+                <div class="relative flex items-center">
+                    <span class="absolute left-4 text-slate-400 pointer-events-none">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </span>
+                    <input
+                        type="text"
+                        id="login-identifier"
+                        required
+                        autocomplete="username"
+                        placeholder="Enter registered mobile no. or email"
+                        oninput="checkLoginInputs()"
+                        class="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 text-sm font-medium text-slate-900 outline-none transition-all"
+                    >
+                </div>
+            </div>
+
+            <!-- Password Input -->
+            <div>
+                <label for="login-password" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                    Password *
+                </label>
+                <div class="relative flex items-center">
+                    <span class="absolute left-4 text-slate-400 pointer-events-none">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </span>
+                    <input
+                        type="password"
+                        id="login-password"
+                        required
+                        autocomplete="current-password"
+                        placeholder="Enter your password"
+                        oninput="checkLoginInputs()"
+                        class="w-full pl-12 pr-16 py-3.5 rounded-xl border border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 text-sm font-medium text-slate-900 outline-none transition-all"
+                    >
+                    <button
+                        type="button"
+                        id="toggle-pass-btn"
+                        onclick="toggleLoginPassword()"
+                        class="absolute right-4 text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors"
+                    >
+                        Show
+                    </button>
+                </div>
+            </div>
+
+            <!-- Login Submit Button (Enabled dynamically when inputs are filled) -->
+            <div class="pt-2">
+                <button
+                    type="submit"
+                    id="login-submit-btn"
+                    disabled
+                    class="w-full py-3.5 px-6 rounded-2xl bg-slate-200 text-slate-400 font-bold text-sm cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                    <span>Login to Shop Workspace</span>
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                    </svg>
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <!-- ================= 3. AUTHENTICATING & OPENING SHOP.HTML LOADER ================= -->
+    <div id="auth-loading-overlay" class="fixed inset-0 bg-white/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 opacity-0 invisible transition-all duration-300">
+        <div class="relative w-20 h-20 flex items-center justify-center mb-5">
+            <div class="absolute inset-0 rounded-full spinner-ring"></div>
+            <img id="auth-loader-logo" src="" alt="" class="hidden w-12 h-12 rounded-2xl object-cover">
+            <svg id="auth-loader-icon" class="w-8 h-8 fill-rose-600" viewBox="0 0 24 24">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+        </div>
+        <h3 id="auth-loader-title" class="text-xl font-extrabold text-slate-900 mb-1 text-center">
+            Verifying Credentials...
+        </h3>
+        <p id="auth-loader-desc" class="text-sm text-slate-500 font-medium text-center">
+            Opening your shop billing workspace...
+        </p>
+    </div>
+
+    <script>
+        let companyData = {};
+        let authData = {};
+        let metaData = {};
+
+        // ================= INDEXEDDB FILE HANDLE HELPER =================
+        function openHandleDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open('VyaparDBStorage', 1);
+                req.onupgradeneeded = () => req.result.createObjectStore('fileHandles');
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function getSavedFileHandle() {
+            try {
+                const db = await openHandleDB();
+                const tx = db.transaction('fileHandles', 'readonly');
+                const req = tx.objectStore('fileHandles').get('activeDtaHandle');
+                return new Promise((resolve) => {
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ================= LOAD COMPANY LOGO & AUTH FROM .DTA =================
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadDatabaseIntoMemory();
+
+            // Populate Logo & Business Name on both the Splash Loader and Login Card
+            const businessName = companyData.businessName || metaData.dbName || "My Business";
+            const ownerName = companyData.ownerName ? `Owner: ${companyData.ownerName}` : "Sign in with your registered Mobile Number or Email";
+            const fileName = metaData.fileName || `${businessName}.dta`;
+
+            document.getElementById('splash-company-name').textContent = businessName;
+            document.getElementById('login-business-name').textContent = businessName;
+            document.getElementById('login-owner-subtitle').textContent = ownerName;
+            document.getElementById('db-badge').textContent = fileName;
+
+            if (companyData.logo && companyData.logo.startsWith('data:image')) {
+                const splashImg = document.getElementById('splash-company-logo');
+                const loginImg = document.getElementById('login-company-logo');
+                const authImg = document.getElementById('auth-loader-logo');
+
+                splashImg.src = companyData.logo;
+                loginImg.src = companyData.logo;
+                authImg.src = companyData.logo;
+
+                splashImg.classList.remove('hidden');
+                loginImg.classList.remove('hidden');
+                authImg.classList.remove('hidden');
+
+                document.getElementById('splash-default-icon').classList.add('hidden');
+                document.getElementById('login-default-logo').classList.add('hidden');
+                document.getElementById('auth-loader-icon').classList.add('hidden');
+            }
+
+            // Transition from Company Logo Splash to Modern Login Card
+            setTimeout(() => {
+                document.getElementById('company-loader').classList.add('opacity-0', 'invisible', 'pointer-events-none');
+                const card = document.getElementById('login-card');
+                card.classList.remove('opacity-0', 'translate-y-4');
+                setTimeout(() => document.getElementById('login-identifier').focus(), 200);
+            }, 1350);
+        });
+
+        async function loadDatabaseIntoMemory() {
+            try {
+                let zip = null;
+                const b64 = sessionStorage.getItem('vyapar_active_archive_b64');
+
+                if (b64) {
+                    zip = await JSZip.loadAsync(b64, { base64: true });
+                } else {
+                    const handle = await getSavedFileHandle();
+                    if (handle) {
+                        const file = await handle.getFile();
+                        zip = await JSZip.loadAsync(file);
+                        const freshB64 = await zip.generateAsync({ type: "base64" });
+                        sessionStorage.setItem('vyapar_active_archive_b64', freshB64);
+                    }
+                }
+
+                if (zip) {
+                    if (zip.file("meta.json")) {
+                        metaData = JSON.parse(await zip.file("meta.json").async("string"));
+                    }
+                    if (zip.file("company.json")) {
+                        companyData = JSON.parse(await zip.file("company.json").async("string"));
+                    }
+                    if (zip.file("auth.json")) {
+                        authData = JSON.parse(await zip.file("auth.json").async("string"));
+                    }
+                } else {
+                    const localMeta = localStorage.getItem('vyapar_active_meta');
+                    if (localMeta) metaData = JSON.parse(localMeta);
+                }
+            } catch (err) {
+                console.error("Failed reading database archive:", err);
+            }
+        }
+
+        // ================= INPUT VALIDATION & LOGIN BUTTON ENABLE =================
+        function toggleLoginPassword() {
+            const passInput = document.getElementById('login-password');
+            const btn = document.getElementById('toggle-pass-btn');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                btn.textContent = 'Hide';
+            } else {
+                passInput.type = 'password';
+                btn.textContent = 'Show';
+            }
+        }
+
+        function checkLoginInputs() {
+            hideLoginError();
+            const rawIdentifier = document.getElementById('login-identifier').value.trim();
+            const pass = document.getElementById('login-password').value;
+            const badge = document.getElementById('detected-type-badge');
+            const submitBtn = document.getElementById('login-submit-btn');
+
+            // Detect whether user is typing Mobile No or Email
+            if (rawIdentifier.length > 0) {
+                badge.classList.remove('hidden');
+                if (/^[0-9+\-\s]+$/.test(rawIdentifier)) {
+                    badge.textContent = "Mobile No.";
+                    badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600";
+                } else {
+                    badge.textContent = "Email ID";
+                    badge.className = "text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-50 text-violet-600";
+                }
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            const isIdentifierReady = rawIdentifier.length >= 3;
+            const isPasswordReady = pass.length >= 4;
+
+            if (isIdentifierReady && isPasswordReady) {
+                if (submitBtn.disabled) {
+                    submitBtn.disabled = false;
+                    submitBtn.className = "w-full py-3.5 px-6 rounded-2xl bg-brand-gradient text-white font-bold text-sm cursor-pointer shadow-lg shadow-rose-500/25 hover:shadow-xl hover:shadow-rose-500/35 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 btn-login-enabled";
+                }
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.className = "w-full py-3.5 px-6 rounded-2xl bg-slate-200 text-slate-400 font-bold text-sm cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-2";
+            }
+        }
+
+        function showLoginError(msg) {
+            const box = document.getElementById('login-error-box');
+            document.getElementById('login-error-msg').textContent = msg;
+            box.classList.remove('hidden', 'animate-shake');
+            void box.offsetWidth; // trigger reflow for shake
+            box.classList.add('animate-shake');
+        }
+
+        function hideLoginError() {
+            document.getElementById('login-error-box').classList.add('hidden');
+        }
+
+        // ================= SHA-256 PASSWORD HASHING =================
+        async function hashPassword(password) {
+            const msgBuffer = new TextEncoder().encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Normalize mobile numbers (strip spaces, +91, hyphens) for reliable matching
+        function normalizePhone(phoneStr) {
+            return String(phoneStr || '').replace(/\D/g, '').slice(-10);
+        }
+
+        // ================= AUTHENTICATE & REDIRECT TO SHOP.HTML =================
+        async function handleLoginSubmit(e) {
+            e.preventDefault();
+            hideLoginError();
+
+            const identifier = document.getElementById('login-identifier').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            if (!authData || !authData.passwordHash) {
+                showLoginError("This database has not completed security setup yet. Please complete Setup first.");
+                return;
+            }
+
+            const enteredHash = await hashPassword(password);
+            const registeredEmail = (authData.email || '').trim().toLowerCase();
+            const registeredMobile = normalizePhone(companyData.mobileNo);
+            const enteredMobile = normalizePhone(identifier);
+
+            const isEmailMatch = registeredEmail && identifier.toLowerCase() === registeredEmail;
+            const isMobileMatch = registeredMobile && enteredMobile.length >= 6 && enteredMobile === registeredMobile;
+
+            if ((!isEmailMatch && !isMobileMatch) || enteredHash !== authData.passwordHash) {
+                showLoginError("Incorrect mobile number/email or password. Please try again.");
+                return;
+            }
+
+            // Show Loading Overlay & Redirect to shop.html
+            const overlay = document.getElementById('auth-loading-overlay');
+            document.getElementById('auth-loader-title').textContent = `Welcome back, ${companyData.ownerName || companyData.businessName || 'Admin'}!`;
+            document.getElementById('auth-loader-desc').textContent = "Loading your shop dashboard & billing workspace...";
+            overlay.classList.remove('opacity-0', 'invisible');
+
+            // Save authenticated session state for shop.html
+            sessionStorage.setItem('vyapar_logged_in_session', JSON.stringify({
+                loggedInAt: new Date().toISOString(),
+                businessName: companyData.businessName || metaData.dbName,
+                ownerName: companyData.ownerName || '',
+                currencySymbol: companyData.currencySymbol || '₹'
+            }));
+
+            setTimeout(() => {
+                window.location.href = 'shop.html';
+            }, 1300);
+        }
+    </script>
+</body>
+</html>

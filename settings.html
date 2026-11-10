@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vyapar Pro — Application Settings</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for reading and writing directly to the .dta database -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .thin-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .thin-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .thin-scroll::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.45);
+            border-radius: 99px;
+        }
+        .thin-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.7);
+        }
+
+        /* Sidebar Navigation Styling */
+        .settings-nav-btn {
+            color: #94a3b8;
+            border-left: 4px solid transparent;
+            transition: all 0.18s ease;
+        }
+        .settings-nav-btn:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+            color: #f8fafc;
+        }
+        .settings-nav-btn.active {
+            background-color: #ffffff;
+            color: #0f172a;
+            border-left-color: #2563eb;
+            font-weight: 800;
+        }
+
+        /* Custom Checkbox Accent */
+        input[type="checkbox"] {
+            accent-color: #2563eb;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Top-Right Notification Toast Animation */
+        @keyframes toastSlideIn {
+            0% { transform: translateX(120%); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        .toast-enter {
+            animation: toastSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-[#f1f5f9] text-slate-800 flex select-none">
+
+    <!-- ================= TOP-RIGHT GREEN NOTIFICATION TOAST ================= -->
+    <div id="save-toast" class="fixed top-4 right-5 z-50 hidden items-center gap-3 px-4 py-3 rounded-xl bg-emerald-600 text-white shadow-xl shadow-emerald-600/25 border border-emerald-400/40 toast-enter">
+        <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+        </div>
+        <div>
+            <p id="save-toast-title" class="text-xs font-extrabold tracking-wide leading-tight">Settings Saved</p>
+            <p id="save-toast-desc" class="text-[11px] text-emerald-100 font-medium">Synced directly to your .dta database</p>
+        </div>
+    </div>
+
+    <!-- ================= LEFT DARK SETTINGS SIDEBAR ================= -->
+    <aside class="w-[235px] bg-[#161926] text-slate-200 flex flex-col shrink-0 h-full border-r border-slate-800 z-20">
+        
+        <!-- Settings Header + Search Bar -->
+        <div class="px-5 py-4 border-b border-white/10">
+            <div class="flex items-center justify-between">
+                <h1 class="text-lg font-extrabold text-white tracking-tight">Settings</h1>
+                <button type="button" onclick="toggleSettingsSearch()" title="Filter Settings" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="settings-search-box" class="hidden mt-3">
+                <input
+                    type="text"
+                    id="settings-search-input"
+                    oninput="filterSidebarSettings(this.value)"
+                    placeholder="Search setting tab..."
+                    class="w-full px-3 py-1.5 rounded-lg bg-[#24293e] text-xs text-white placeholder-slate-400 border border-white/10 outline-none focus:border-blue-400"
+                >
+            </div>
+        </div>
+
+        <!-- 10 Complete Vyapar Settings Navigation Tabs -->
+        <nav id="settings-nav-list" class="flex-1 overflow-y-auto thin-scroll py-2 text-xs tracking-wider uppercase font-semibold space-y-0.5">
+            <button type="button" data-tab="general" onclick="switchSettingsTab('general')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                GENERAL
+            </button>
+            <button type="button" data-tab="transaction" onclick="switchSettingsTab('transaction')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                TRANSACTION
+            </button>
+            <button type="button" data-tab="print" onclick="switchSettingsTab('print')" class="settings-nav-btn active w-full text-left px-5 py-3.5 block">
+                PRINT
+            </button>
+            <button type="button" data-tab="taxes" onclick="switchSettingsTab('taxes')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                TAXES &amp; GST
+            </button>
+            <button type="button" data-tab="usermgmt" onclick="switchSettingsTab('usermgmt')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                USER MANAGEMENT
+            </button>
+            <button type="button" data-tab="message" onclick="switchSettingsTab('message')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                TRANSACTION MESSAGE
+            </button>
+            <button type="button" data-tab="party" onclick="switchSettingsTab('party')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                PARTY
+            </button>
+            <button type="button" data-tab="item" onclick="switchSettingsTab('item')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                ITEM
+            </button>
+            <button type="button" data-tab="reminders" onclick="switchSettingsTab('reminders')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                SERVICE REMINDERS
+            </button>
+            <button type="button" data-tab="accounting" onclick="switchSettingsTab('accounting')" class="settings-nav-btn w-full text-left px-5 py-3.5 block">
+                ACCOUNTING
+            </button>
+        </nav>
+
+        <!-- Back to Shop Dashboard Button (Only when explicitly clicked) -->
+        <div class="p-3 border-t border-white/10 bg-[#111420]">
+            <a href="shop.html" class="w-full py-2.5 px-3 rounded-xl bg-[#252a40] hover:bg-[#313854] text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span>Back to Dashboard</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ================= RIGHT SETTINGS CONTENT WORKSPACE ================= -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden bg-white relative">
+
+        <!-- Top Bar with Active Company Badge & Manual Save Button -->
+        <header class="h-12 border-b border-slate-200 px-6 flex items-center justify-between bg-slate-50/70 shrink-0">
+            <div class="flex items-center gap-2.5 text-xs font-bold text-slate-600">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span id="header-company-badge">Company: MINI MART</span>
+                <span class="text-slate-300">|</span>
+                <span id="active-section-label" class="text-blue-600 uppercase">PRINT SETTINGS</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="triggerSettingChanged('All Settings Saved')" class="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors">
+                    Save Settings
+                </button>
+            </div>
+        </header>
+
+        <!-- ================= 1. PRINT TAB (DEFAULT ACTIVE — MATCHES SCREENSHOT 2) ================= -->
+        <section id="tab-print" class="settings-tab-panel flex-1 flex flex-col lg:flex-row overflow-hidden">
+            
+            <!-- Left Print Controls Column -->
+            <div class="w-full lg:w-[44%] border-r border-slate-200 flex flex-col h-full overflow-y-auto thin-scroll bg-white">
+                
+                <!-- Top Printer Type Tabs: REGULAR PRINTER | THERMAL PRINTER -->
+                <div class="flex border-b border-slate-200 px-4 pt-2 shrink-0 bg-slate-50/50">
+                    <button type="button" id="printer-tab-regular" onclick="selectPrinterType('regular')" class="px-4 py-3 text-xs font-extrabold tracking-wide text-blue-600 border-b-2 border-blue-600 transition-colors">
+                        REGULAR PRINTER
+                    </button>
+                    <button type="button" id="printer-tab-thermal" onclick="selectPrinterType('thermal')" class="px-4 py-3 text-xs font-bold tracking-wide text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-colors">
+                        THERMAL PRINTER
+                    </button>
+                </div>
+
+                <!-- Sub Tabs: CHANGE LAYOUT | CHANGE COLORS -->
+                <div class="flex border-b border-slate-200 px-5 pt-2 shrink-0">
+                    <button type="button" id="subtab-layout-btn" onclick="switchPrintSubtab('layout')" class="px-3 py-2 text-[11px] font-extrabold text-blue-600 border-b-2 border-pink-500">
+                        CHANGE LAYOUT
+                    </button>
+                    <button type="button" id="subtab-colors-btn" onclick="switchPrintSubtab('colors')" class="px-3 py-2 text-[11px] font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent">
+                        CHANGE COLORS
+                    </button>
+                </div>
+
+                <!-- Layout Theme Selector Cards (12 Vyapar Themes Carousel) -->
+                <div id="print-subtab-layout" class="p-5 border-b border-slate-200">
+                    <div class="flex items-center gap-3 overflow-x-auto thin-scroll pb-2">
+                        <div onclick="selectInvoiceTheme('Tally Theme', this)" class="theme-card shrink-0 w-24 p-2 rounded-lg border-2 border-blue-600 bg-blue-50/40 cursor-pointer text-center transition-all">
+                            <div class="h-14 bg-white border border-slate-300 rounded mb-1.5 p-1 flex flex-col justify-between">
+                                <div class="h-2 bg-slate-300 rounded-xs"></div>
+                                <div class="grid grid-cols-3 gap-0.5"><div class="h-4 bg-slate-200"></div><div class="h-4 bg-slate-200"></div><div class="h-4 bg-slate-200"></div></div>
+                                <div class="h-2 bg-slate-300 rounded-xs"></div>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-800 block leading-tight">Tally Theme</span>
+                        </div>
+
+                        <div onclick="selectInvoiceTheme('Landscape Theme 1', this)" class="theme-card shrink-0 w-24 p-2 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white cursor-pointer text-center transition-all">
+                            <div class="h-14 bg-white border border-slate-300 rounded mb-1.5 p-1 flex flex-col justify-between">
+                                <div class="h-2 bg-blue-200 rounded-xs"></div>
+                                <div class="h-5 bg-slate-100 border border-slate-200"></div>
+                                <div class="h-2 bg-slate-200 rounded-xs"></div>
+                            </div>
+                            <span class="text-[11px] font-medium text-slate-600 block leading-tight">Landscape Theme 1</span>
+                        </div>
+
+                        <div onclick="selectInvoiceTheme('Landscape Theme 2', this)" class="theme-card shrink-0 w-24 p-2 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white cursor-pointer text-center transition-all">
+                            <div class="h-14 bg-white border border-slate-300 rounded mb-1.5 p-1 flex flex-col justify-between">
+                                <div class="flex justify-between"><div class="w-6 h-2 bg-slate-300"></div><div class="w-6 h-2 bg-slate-300"></div></div>
+                                <div class="h-5 bg-slate-100 border border-slate-200"></div>
+                                <div class="h-2 bg-slate-300 rounded-xs"></div>
+                            </div>
+                            <span class="text-[11px] font-medium text-slate-600 block leading-tight">Landscape Theme 2</span>
+                        </div>
+
+                        <div onclick="selectInvoiceTheme('GST Theme 1', this)" class="theme-card shrink-0 w-24 p-2 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white cursor-pointer text-center transition-all">
+                            <div class="h-14 bg-white border border-slate-300 rounded mb-1.5 p-1 flex flex-col justify-between">
+                                <div class="h-2.5 bg-indigo-200 rounded-xs"></div>
+                                <div class="h-5 bg-slate-100"></div>
+                                <div class="h-2 bg-indigo-100 rounded-xs"></div>
+                            </div>
+                            <span class="text-[11px] font-medium text-slate-600 block leading-tight">GST Theme 1</span>
+                        </div>
+
+                        <div onclick="selectInvoiceTheme('GST Theme 3', this)" class="theme-card shrink-0 w-24 p-2 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white cursor-pointer text-center transition-all">
+                            <div class="h-14 bg-white border border-slate-300 rounded mb-1.5 p-1 flex flex-col justify-between">
+                                <div class="h-2.5 bg-emerald-200 rounded-xs"></div>
+                                <div class="h-5 bg-slate-100"></div>
+                                <div class="h-2 bg-emerald-100 rounded-xs"></div>
+                            </div>
+                            <span class="text-[11px] font-medium text-slate-600 block leading-tight">GST Theme 3</span>
+                        </div>
+
+                        <div onclick="selectInvoiceTheme('Modern Double Div', this)" class="theme-card shrink-0 w-24 p-2 rounded-lg border-2 border-slate-200 hover:border-slate-300 bg-white cursor-pointer text-center transition-all">
+                            <div class="h-14 bg-white border border-slate-300 rounded mb-1.5 p-1 flex flex-col justify-between">
+                                <div class="h-2.5 bg-rose-200 rounded-xs"></div>
+                                <div class="h-5 bg-slate-100"></div>
+                                <div class="h-2 bg-rose-100 rounded-xs"></div>
+                            </div>
+                            <span class="text-[11px] font-medium text-slate-600 block leading-tight">Modern Theme</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Color Accent Picker Subtab -->
+                <div id="print-subtab-colors" class="hidden p-5 border-b border-slate-200">
+                    <p class="text-xs font-bold text-slate-600 mb-3">Select Invoice Theme Accent Color</p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button type="button" onclick="selectInvoiceColor('#1e293b')" class="w-8 h-8 rounded-full bg-[#1e293b] ring-2 ring-offset-2 ring-blue-600"></button>
+                        <button type="button" onclick="selectInvoiceColor('#1d4ed8')" class="w-8 h-8 rounded-full bg-[#1d4ed8]"></button>
+                        <button type="button" onclick="selectInvoiceColor('#047857')" class="w-8 h-8 rounded-full bg-[#047857]"></button>
+                        <button type="button" onclick="selectInvoiceColor('#b91c1c')" class="w-8 h-8 rounded-full bg-[#b91c1c]"></button>
+                        <button type="button" onclick="selectInvoiceColor('#6d28d9')" class="w-8 h-8 rounded-full bg-[#6d28d9]"></button>
+                        <button type="button" onclick="selectInvoiceColor('#c2410c')" class="w-8 h-8 rounded-full bg-[#c2410c]"></button>
+                        <button type="button" onclick="selectInvoiceColor('#0f766e')" class="w-8 h-8 rounded-full bg-[#0f766e]"></button>
+                    </div>
+                </div>
+
+                <!-- Print Company Info / Header Controls -->
+                <div class="p-5 space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800 border-b border-slate-200 pb-2">
+                        Print Company Info / Header
+                    </h3>
+
+                    <label class="flex items-center gap-3 text-xs font-medium text-slate-700 cursor-pointer">
+                        <input type="checkbox" id="chk-make-regular-default" checked onchange="syncPrintPreview('Default Printer Updated')">
+                        <span>Make Regular Printer Default</span>
+                    </label>
+
+                    <label class="flex items-center gap-3 text-xs font-medium text-slate-700 cursor-pointer">
+                        <input type="checkbox" id="chk-repeat-header" checked onchange="syncPrintPreview('Repeat Header Updated')">
+                        <span>Print repeat header in all pages</span>
+                    </label>
+
+                    <!-- Company Name Input with Checkbox -->
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="chk-print-company-name" checked onchange="syncPrintPreview('Company Name Print Updated')">
+                        <div class="flex-1 relative">
+                            <span class="absolute -top-2 left-2.5 px-1 bg-white text-[10px] font-semibold text-slate-400">Company Name</span>
+                            <input type="text" id="print-company-name" oninput="syncPrintPreview()" value="MINI MART" class="w-full px-3 py-2 rounded border border-slate-300 focus:border-blue-500 text-xs font-semibold text-slate-800 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Company Logo Toggle + Change Link -->
+                    <div class="flex items-center gap-3 text-xs font-medium text-slate-700">
+                        <input type="checkbox" id="chk-print-logo" checked onchange="syncPrintPreview('Company Logo Print Updated')">
+                        <span>Company Logo</span>
+                        <button type="button" onclick="document.getElementById('print-logo-upload').click()" class="text-blue-600 hover:underline font-semibold text-xs">(Change)</button>
+                        <input type="file" id="print-logo-upload" accept="image/*" class="hidden" onchange="handlePrintLogoChange(event)">
+                    </div>
+
+                    <!-- Address Input -->
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="chk-print-address" checked onchange="syncPrintPreview('Address Print Updated')">
+                        <input type="text" id="print-address" oninput="syncPrintPreview()" placeholder="Address" class="flex-1 px-3 py-2 rounded border border-slate-300 focus:border-blue-500 text-xs text-slate-800 outline-none">
+                    </div>
+
+                    <!-- Email Input -->
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="chk-print-email" checked onchange="syncPrintPreview('Email Print Updated')">
+                        <input type="email" id="print-email" oninput="syncPrintPreview()" placeholder="Email" class="flex-1 px-3 py-2 rounded border border-slate-300 focus:border-blue-500 text-xs text-slate-800 outline-none">
+                    </div>
+
+                    <!-- Phone Input -->
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="chk-print-phone" checked onchange="syncPrintPreview('Phone Print Updated')">
+                        <input type="text" id="print-phone" oninput="syncPrintPreview()" placeholder="Phone Number" value="9170896819" class="flex-1 px-3 py-2 rounded border border-slate-300 focus:border-blue-500 text-xs text-slate-800 outline-none">
+                    </div>
+
+                    <!-- GSTIN on Sale -->
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="chk-print-gstin" checked onchange="syncPrintPreview('GSTIN Print Updated')">
+                        <input type="text" id="print-gstin" oninput="syncPrintPreview()" placeholder="GSTIN on Sale" class="flex-1 px-3 py-2 rounded border border-slate-300 focus:border-blue-500 text-xs uppercase text-slate-800 outline-none">
+                    </div>
+
+                    <!-- Paper Size, Totals & Taxes, and Footer Options -->
+                    <div class="pt-3 border-t border-slate-200 space-y-3">
+                        <h3 class="text-sm font-bold text-slate-800">Printer Settings, Totals &amp; Footer</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Page Size</label>
+                                <select id="print-page-size" onchange="syncPrintPreview('Page Size Changed')" class="w-full px-3 py-2 rounded border border-slate-300 text-xs font-semibold bg-white">
+                                    <option value="A4">A4 (Regular)</option>
+                                    <option value="A5">A5 (Half Page)</option>
+                                    <option value="4inch">Thermal 4 Inch (104mm)</option>
+                                    <option value="3inch">Thermal 3 Inch (80mm)</option>
+                                    <option value="2inch">Thermal 2 Inch (58mm)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Text Size</label>
+                                <select id="print-text-size" onchange="syncPrintPreview('Print Text Size Changed')" class="w-full px-3 py-2 rounded border border-slate-300 text-xs font-semibold bg-white">
+                                    <option value="Medium">Medium (Default)</option>
+                                    <option value="Small">Small (Compact)</option>
+                                    <option value="Large">Large</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2.5 pt-1 text-xs font-medium text-slate-700">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="chk-print-tax-summary" checked onchange="syncPrintPreview('HSN Tax Summary Updated')">
+                                <span>Print HSN/SAC Tax Summary Table on Invoice</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="chk-print-words" checked onchange="syncPrintPreview('Amount in Words Updated')">
+                                <span>Print Invoice Amount in Words</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="chk-print-received" checked onchange="syncPrintPreview('Received Amount Toggle Updated')">
+                                <span>Print Received &amp; Balance Amount</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="chk-print-terms" checked onchange="syncPrintPreview('Footer Terms Updated')">
+                                <span>Print Terms &amp; Conditions and Authorised Signatory at Footer</span>
+                            </label>
+                            <div class="pt-1">
+                                <label class="block text-[11px] font-semibold text-slate-500 mb-1">Custom Invoice Terms &amp; Conditions</label>
+                                <input type="text" id="print-terms-text" oninput="syncPrintPreview()" value="Thanks for doing business with us!" class="w-full px-3 py-2 rounded border border-slate-300 text-xs text-slate-800 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Live Tax Invoice Preview Column (Exact Match to Screenshot 2) -->
+            <div class="flex-1 bg-slate-100 p-4 sm:p-6 overflow-y-auto thin-scroll flex justify-center items-start">
+                <div id="live-invoice-sheet" class="w-full max-w-[660px] bg-white shadow-lg border border-slate-300 p-5 text-[11px] text-slate-800 transition-all">
+                    
+                    <div class="flex items-center justify-between mb-2">
+                        <span id="preview-theme-badge" class="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Tally Theme</span>
+                        <span id="preview-paper-badge" class="text-[10px] font-semibold text-slate-400">Page: A4</span>
+                    </div>
+
+                    <h2 id="preview-invoice-title" class="text-center text-base font-extrabold text-slate-900 mb-2">Tax Invoice</h2>
+
+                    <!-- Outer Boxed Tally-Style Invoice Frame -->
+                    <div id="invoice-outer-frame" class="border border-slate-600">
+                        
+                        <!-- Header Block: Logo + Company Name + Phone/Address/Email -->
+                        <div class="p-3 border-b border-slate-600 flex items-center gap-4">
+                            <div id="preview-logo-box" class="w-16 h-14 bg-slate-200 border border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
+                                <img id="preview-logo-img" src="" alt="Logo" class="hidden w-full h-full object-cover">
+                                <span id="preview-logo-placeholder" class="text-[10px] text-slate-500 font-semibold">Image</span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 id="preview-company-name" class="text-lg font-extrabold text-slate-900 leading-tight uppercase">MINI MART</h3>
+                                <p id="preview-company-address" class="text-[10px] text-slate-600 truncate"></p>
+                                <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] font-bold text-slate-700 mt-0.5">
+                                    <span id="preview-company-phone">Phone: 9170896819</span>
+                                    <span id="preview-company-email" class="hidden"></span>
+                                    <span id="preview-company-gstin" class="hidden"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bill To & Invoice Details Split Row -->
+                        <div class="grid grid-cols-2 border-b border-slate-600">
+                            <div class="p-2.5 border-r border-slate-600 space-y-0.5">
+                                <p class="font-bold text-slate-900 border-b border-slate-300 pb-1 mb-1">Bill To:</p>
+                                <p class="font-semibold text-slate-800">Classic enterprises</p>
+                                <p class="text-[10px] text-slate-600">Plot No. 1, Shop No. 8, Koramangala, Bangalore, 560034</p>
+                                <p class="text-[10px] text-slate-700">Contact No.: 8888888888</p>
+                            </div>
+                            <div class="p-2.5 space-y-0.5">
+                                <p class="font-bold text-slate-900 border-b border-slate-300 pb-1 mb-1">Invoice Details:</p>
+                                <p>Invoice No.: <span id="preview-inv-no" class="font-semibold">Inv. 101</span></p>
+                                <p>Date: <span>02-07-2019</span></p>
+                                <p id="preview-time-row">Time: <span>12:30 PM</span></p>
+                                <p id="preview-due-row">Due Date: <span>17-07-2019</span></p>
+                                <p id="preview-po-row" class="hidden">PO No.: <span>PO-9921 (01-07-2019)</span></p>
+                                <p id="preview-eway-row" class="hidden">E-Way Bill: <span>181009928371</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Ship To Row -->
+                        <div id="preview-shipto-row" class="p-2 border-b border-slate-600">
+                            <p class="font-bold text-slate-900 border-b border-slate-300 pb-0.5 mb-1">Ship To:</p>
+                            <p class="text-[10px] text-slate-700">Mehta Textiles, Marathalli Road, Bangalore, Karnataka, 560034</p>
+                        </div>
+
+                        <!-- Items Table -->
+                        <table class="w-full text-[10px] border-collapse border-b border-slate-600">
+                            <thead>
+                                <tr id="preview-table-head" class="bg-slate-100 border-b border-slate-600 text-slate-800 font-bold">
+                                    <th class="border-r border-slate-500 p-1.5 text-left w-6">#</th>
+                                    <th class="border-r border-slate-500 p-1.5 text-left">Item name</th>
+                                    <th class="border-r border-slate-500 p-1.5 text-center">HSN/SAC</th>
+                                    <th class="border-r border-slate-500 p-1.5 text-right">Quantity</th>
+                                    <th class="border-r border-slate-500 p-1.5 text-right">Price/unit</th>
+                                    <th class="border-r border-slate-500 p-1.5 text-right">Discount</th>
+                                    <th class="border-r border-slate-500 p-1.5 text-right">GST</th>
+                                    <th class="p-1.5 text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-slate-400">
+                                    <td class="border-r border-slate-500 p-1.5">1</td>
+                                    <td class="border-r border-slate-500 p-1.5 font-bold">ITEM 1</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-center">1234</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">1+1</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">₹ 10.00</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">₹ 0.10 (1%)</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">₹ 0.50 (5%)</td>
+                                    <td class="p-1.5 text-right font-semibold">₹ 10.40</td>
+                                </tr>
+                                <tr class="border-b border-slate-500">
+                                    <td class="border-r border-slate-500 p-1.5">2</td>
+                                    <td class="border-r border-slate-500 p-1.5 font-bold">ITEM 2</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-center">6325</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">1</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">₹ 30.00</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">₹ 0.00 (0%)</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">₹ 5.40 (18%)</td>
+                                    <td class="p-1.5 text-right font-semibold">₹ 35.40</td>
+                                </tr>
+                                <tr class="font-bold bg-slate-50">
+                                    <td class="border-r border-slate-500 p-1.5"></td>
+                                    <td class="border-r border-slate-500 p-1.5">TOTAL</td>
+                                    <td class="border-r border-slate-500 p-1.5"></td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">2 + 1</td>
+                                    <td class="border-r border-slate-500 p-1.5"></td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">₹ 0.10</td>
+                                    <td class="border-r border-slate-500 p-1.5 text-right">₹ 5.90</td>
+                                    <td class="p-1.5 text-right">₹ 45.80</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Tax Summary & SubTotals Split Block -->
+                        <div class="grid grid-cols-12">
+                            <!-- Left 7 Cols: HSN Tax Summary Table -->
+                            <div id="preview-tax-summary-col" class="col-span-7 border-r border-slate-600">
+                                <p class="text-[10px] font-semibold px-1.5 py-1 border-b border-slate-400">Tax Summary:</p>
+                                <table class="w-full text-[9px] border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-slate-400 font-bold text-center">
+                                            <th class="border-r border-slate-400 p-1">HSN/SAC</th>
+                                            <th class="border-r border-slate-400 p-1">Taxable amount (₹)</th>
+                                            <th class="border-r border-slate-400 p-1" colspan="2">CGST</th>
+                                            <th class="border-r border-slate-400 p-1" colspan="2">SGST</th>
+                                            <th class="p-1">Total Tax</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="border-b border-slate-300 text-right">
+                                            <td class="border-r border-slate-400 p-1 text-center">1234</td>
+                                            <td class="border-r border-slate-400 p-1">₹ 9.90</td>
+                                            <td class="border-r border-slate-400 p-1">2.5%</td>
+                                            <td class="border-r border-slate-400 p-1">₹ 0.25</td>
+                                            <td class="border-r border-slate-400 p-1">2.5%</td>
+                                            <td class="border-r border-slate-400 p-1">₹ 0.25</td>
+                                            <td class="p-1">₹ 0.50</td>
+                                        </tr>
+                                        <tr class="text-right">
+                                            <td class="border-r border-slate-400 p-1 text-center">6325</td>
+                                            <td class="border-r border-slate-400 p-1">₹ 30.00</td>
+                                            <td class="border-r border-slate-400 p-1">9.0%</td>
+                                            <td class="border-r border-slate-400 p-1">₹ 2.70</td>
+                                            <td class="border-r border-slate-400 p-1">9.0%</td>
+                                            <td class="border-r border-slate-400 p-1">₹ 2.70</td>
+                                            <td class="p-1">₹ 5.40</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Right 5 Cols: Totals & Amount in Words -->
+                            <div class="col-span-5 flex flex-col justify-between text-[10px]">
+                                <div class="divide-y divide-slate-300">
+                                    <div class="flex justify-between px-2 py-1">
+                                        <span>Sub Total</span>
+                                        <span class="font-semibold">₹ 45.80</span>
+                                    </div>
+                                    <div class="flex justify-between px-2 py-1">
+                                        <span>Discount (12%)</span>
+                                        <span>₹ 5.50</span>
+                                    </div>
+                                    <div class="flex justify-between px-2 py-1">
+                                        <span>Tax (5%)</span>
+                                        <span>₹ 2.02</span>
+                                    </div>
+                                    <div class="flex justify-between px-2 py-1 font-extrabold text-slate-900 bg-slate-50">
+                                        <span>Total</span>
+                                        <span>₹ 42.32</span>
+                                    </div>
+                                    <div id="preview-received-row" class="flex justify-between px-2 py-1 text-slate-600">
+                                        <span>Received / Balance</span>
+                                        <span>₹ 42.32 / ₹ 0.00</span>
+                                    </div>
+                                </div>
+                                <div id="preview-words-box" class="p-1.5 border-t border-slate-400 bg-slate-50/50">
+                                    <p class="text-[9px] text-slate-500 font-semibold">Invoice Amount in Words :</p>
+                                    <p class="text-[9px] font-bold text-slate-800">Forty Two Rupees and Thirty Two Paisa Only</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer Terms & Authorised Signatory -->
+                        <div id="preview-footer-row" class="grid grid-cols-2 border-t border-slate-600 text-[10px]">
+                            <div class="p-2 border-r border-slate-600">
+                                <p class="font-bold text-slate-800 mb-0.5">Terms &amp; Conditions:</p>
+                                <p id="preview-terms-output" class="text-[9px] text-slate-600">Thanks for doing business with us!</p>
+                            </div>
+                            <div class="p-2 text-right flex flex-col justify-between items-end">
+                                <p class="font-bold text-slate-800">For <span id="preview-sign-company">MINI MART</span></p>
+                                <p class="text-[9px] text-slate-500 mt-4">Authorised Signatory</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 2. GENERAL SETTINGS TAB ================= -->
+        <section id="tab-general" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-5xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">General Settings</h2>
+                    <p class="text-xs text-slate-500">Configure language, currency, decimal places, security passcode, multi-firm, and more transactions.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Application Preferences -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-4">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Application</h3>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">App Language</label>
+                                <select id="gen-language" onchange="triggerSettingChanged('App Language Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white">
+                                    <option value="English">English (Default)</option>
+                                    <option value="Hindi">हिन्दी (Hindi)</option>
+                                    <option value="Gujarati">ગુજરાતી (Gujarati)</option>
+                                    <option value="Marathi">मराठी (Marathi)</option>
+                                    <option value="Tamil">தமிழ் (Tamil)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Business Currency</label>
+                                <select id="gen-currency" onchange="triggerSettingChanged('Business Currency Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white">
+                                    <option value="₹">₹ (INR - Indian Rupee)</option>
+                                    <option value="$">$ (USD - US Dollar)</option>
+                                    <option value="€">€ (EUR - Euro)</option>
+                                    <option value="£">£ (GBP - Pound)</option>
+                                    <option value="AED">AED (UAE Dirham)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Decimal Places (Amount)</label>
+                                <select id="gen-decimals" onchange="triggerSettingChanged('Decimal Places Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white">
+                                    <option value="2">2 Decimal Places (0.00)</option>
+                                    <option value="0">0 Decimal Places (0)</option>
+                                    <option value="3">3 Decimal Places (0.000)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Date Format</label>
+                                <select id="gen-date-format" onchange="triggerSettingChanged('Date Format Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white">
+                                    <option value="DD-MM-YYYY">DD-MM-YYYY (31-12-2026)</option>
+                                    <option value="DD/MM/YYYY">DD/MM/YYYY (31/12/2026)</option>
+                                    <option value="YYYY-MM-DD">YYYY-MM-DD (2026-12-31)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Change Vyapar Theme</label>
+                            <select id="gen-app-theme" onchange="triggerSettingChanged('Vyapar Theme Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white">
+                                <option value="Classic">Classic Theme</option>
+                                <option value="Standard">Standard Theme</option>
+                                <option value="Trending">Trending Theme</option>
+                            </select>
+                        </div>
+
+                        <label class="flex items-center gap-3 text-xs font-medium text-slate-700 cursor-pointer pt-1">
+                            <input type="checkbox" id="gen-warn-unsaved" checked onchange="triggerSettingChanged('Unsaved Changes Warning Updated')">
+                            <span>Show warning for unsaved changes before closing</span>
+                        </label>
+                    </div>
+
+                    <!-- Security, Multi-Firm & Backup -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-4">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Security, Multi-Firm &amp; Auto Backup</h3>
+
+                        <label class="flex items-center gap-3 text-xs font-medium text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="gen-enable-passcode" onchange="triggerSettingChanged('App Passcode Lock Updated')">
+                            <span>Enable App Passcode / Fingerprint Lock</span>
+                        </label>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">4-Digit Security PIN</label>
+                            <input type="password" id="gen-passcode-pin" maxlength="4" oninput="triggerSettingChanged('Security PIN Updated')" placeholder="Enter 4-digit PIN" class="w-44 px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold bg-white outline-none">
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-200 space-y-2.5">
+                            <label class="flex items-center gap-3 text-xs font-medium text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="gen-multi-firm" onchange="triggerSettingChanged('Multi-Firm Support Updated')">
+                                <span>Enable Multi-Firms (Manage multiple companies on same account)</span>
+                            </label>
+                            <label class="flex items-center gap-3 text-xs font-medium text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="gen-auto-backup" checked onchange="triggerSettingChanged('Auto Backup Updated')">
+                                <span>Enable Automatic Backup of .dta Business Data</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- More Transactions (Turn ON/OFF Modules) -->
+                    <div class="md:col-span-2 bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-4">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">More Transactions (Enable / Disable Modules)</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs font-medium text-slate-700">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="gen-mod-estimate" checked onchange="triggerSettingChanged('Estimate/Quotation Module Updated')">
+                                <span>Estimate / Quotation (Proforma Invoice)</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="gen-mod-orders" checked onchange="triggerSettingChanged('Sale/Purchase Order Module Updated')">
+                                <span>Sale / Purchase Order</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="gen-mod-income" checked onchange="triggerSettingChanged('Other Income Module Updated')">
+                                <span>Other Income</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="gen-mod-challan" checked onchange="triggerSettingChanged('Delivery Challan Module Updated')">
+                                <span>Delivery Challan</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="gen-mod-challan-return" onchange="triggerSettingChanged('Goods Return on Challan Updated')">
+                                <span>Goods Return on Delivery Challan</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="gen-mod-challan-print-amt" checked onchange="triggerSettingChanged('Challan Print Amount Updated')">
+                                <span>Print Amount on Delivery Challan</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 3. TRANSACTION SETTINGS TAB ================= -->
+        <section id="tab-transaction" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-5xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Transaction Settings</h2>
+                    <p class="text-xs text-slate-500">Customize transaction header, items table columns, taxes, discounts, prefixes, and billing features.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Transaction Header -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Transaction Header</h3>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-bill-no" checked onchange="syncPrintPreview('Invoice Bill Numbering Updated')">
+                            <span>Invoice / Bill Number (Auto-increment on new sale)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-cash-sale-default" onchange="triggerSettingChanged('Cash Sale Default Updated')">
+                            <span>Cash Sale by default</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-po-details" onchange="syncPrintPreview('Customer PO Details Updated')">
+                            <span>Customer PO Details (PO Date &amp; PO Number on invoice)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-add-time" checked onchange="syncPrintPreview('Transaction Time Updated')">
+                            <span>Add Time on Transactions</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-print-time" checked onchange="syncPrintPreview('Print Time on Invoice Updated')">
+                            <span>Print Time on Invoices</span>
+                        </label>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Items Table</h3>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-inclusive-tax" checked onchange="triggerSettingChanged('Inclusive/Exclusive Tax Toggle Updated')">
+                            <span>Allow Inclusive / Exclusive tax on Rate (Price/unit)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-display-purchase-price" checked onchange="triggerSettingChanged('Display Purchase Price Updated')">
+                            <span>Display Purchase Price while creating transaction</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-free-qty" checked onchange="triggerSettingChanged('Free Item Quantity Updated')">
+                            <span>Free Item Quantity (e.g. Buy 2 Get 1 Free)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-item-count" checked onchange="triggerSettingChanged('Item Count Display Updated')">
+                            <span>Count number of items on transaction</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-barcode-scan" checked onchange="triggerSettingChanged('Barcode Scanning Updated')">
+                            <span>Barcode scanning for items during billing</span>
+                        </label>
+                    </div>
+
+                    <!-- Taxes, Discounts, Total & More Features -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Taxes, Discounts &amp; More Features</h3>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-wise-tax" onchange="triggerSettingChanged('Transaction Wise Tax Updated')">
+                            <span>Transaction Wise Tax</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-wise-discount" checked onchange="triggerSettingChanged('Transaction Wise Discount Updated')">
+                            <span>Transaction Wise Discount</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-round-off" checked onchange="triggerSettingChanged('Round Off Transaction Amount Updated')">
+                            <span>Round Off Transaction Amount</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-share-image" onchange="triggerSettingChanged('Share Invoice as Image Updated')">
+                            <span>Share Invoice as Image instead of PDF</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-edit-passcode" onchange="triggerSettingChanged('Passcode for Edit/Delete Updated')">
+                            <span>Passcode for Edit / Delete Transaction</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-payment-discount" checked onchange="triggerSettingChanged('Discount During Payment Updated')">
+                            <span>Discount during Payment-In / Payment-Out</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-link-payments" checked onchange="triggerSettingChanged('Link Payments to Invoices Updated')">
+                            <span>Link Payment to Invoices (Bill-wise Payment Tracking)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-due-dates" checked onchange="syncPrintPreview('Due Date & Payment Terms Updated')">
+                            <span>Due Dates and Payment Terms</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-invoice-preview" checked onchange="triggerSettingChanged('Enable Invoice Preview Updated')">
+                            <span>Enable Invoice Preview while creating transaction</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-transport" onchange="triggerSettingChanged('Transportation Details Updated')">
+                            <span>Transportation Details on Invoices</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-extra-charges" checked onchange="triggerSettingChanged('Additional Charges Updated')">
+                            <span>Additional Charges (Shipping, Packaging, etc.)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="txn-show-profit" checked onchange="triggerSettingChanged('Show Profit on Sale Invoice Updated')">
+                            <span>Show Profit while making Sale Invoice</span>
+                        </label>
+                    </div>
+
+                    <!-- Transaction Prefixes -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Transaction Prefixes</h3>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <label class="block font-semibold text-slate-600 mb-1">Sale Invoice Prefix</label>
+                                <input type="text" id="prefix-sale" value="INV-" oninput="syncPrintPreview('Sale Prefix Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold bg-white">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-600 mb-1">Estimate Prefix</label>
+                                <input type="text" id="prefix-estimate" value="EST-" oninput="triggerSettingChanged('Estimate Prefix Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold bg-white">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-600 mb-1">Sale Order Prefix</label>
+                                <input type="text" id="prefix-sale-order" value="SO-" oninput="triggerSettingChanged('Sale Order Prefix Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold bg-white">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-600 mb-1">Delivery Challan Prefix</label>
+                                <input type="text" id="prefix-challan" value="DC-" oninput="triggerSettingChanged('Challan Prefix Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold bg-white">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-600 mb-1">Credit Note Prefix</label>
+                                <input type="text" id="prefix-cr-note" value="CN-" oninput="triggerSettingChanged('Credit Note Prefix Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold bg-white">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-600 mb-1">Purchase Order Prefix</label>
+                                <input type="text" id="prefix-po" value="PO-" oninput="triggerSettingChanged('Purchase Order Prefix Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold bg-white">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 4. TAXES & GST TAB ================= -->
+        <section id="tab-taxes" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-5xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Taxes &amp; GST Settings</h2>
+                    <p class="text-xs text-slate-500">Configure GST compliance, HSN/SAC codes, Reverse Charge, E-Way Bill, Composite Scheme, and Tax Slabs.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3.5 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">GST &amp; Statutory Configuration</h3>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="gst-enable" checked onchange="triggerSettingChanged('GST Invoicing Updated')">
+                            <span>Enable GST (Create GST compliant invoices &amp; GSTR reports)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="gst-hsn" checked onchange="triggerSettingChanged('HSN/SAC Code Updated')">
+                            <span>Enable HSN / SAC Code for items</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="gst-cess" onchange="triggerSettingChanged('Additional Cess Updated')">
+                            <span>Additional Cess per item</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="gst-reverse-charge" onchange="triggerSettingChanged('Reverse Charge Updated')">
+                            <span>Reverse Charge (RCM) in purchase transactions</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="gst-state-of-supply" checked onchange="triggerSettingChanged('Place of Supply Updated')">
+                            <span>State of Supply (Place of Supply in transactions)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="gst-eway-bill" checked onchange="syncPrintPreview('E-Way Bill Number Updated')">
+                            <span>E-Way Bill Number in transactions</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="gst-composite" onchange="triggerSettingChanged('Composite Scheme Updated')">
+                            <span>Composite Scheme User (GSTR-4 / CMP-08 mode)</span>
+                        </label>
+                    </div>
+
+                    <!-- Tax Slabs List -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Active GST Tax Rates &amp; Groups</h3>
+                        <div class="grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700">
+                            <div class="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between"><span>GST @ 0%</span><span class="text-emerald-600">Active</span></div>
+                            <div class="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between"><span>GST @ 0.25%</span><span class="text-emerald-600">Active</span></div>
+                            <div class="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between"><span>GST @ 3%</span><span class="text-emerald-600">Active</span></div>
+                            <div class="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between"><span>GST @ 5%</span><span class="text-emerald-600">Active</span></div>
+                            <div class="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between"><span>GST @ 12%</span><span class="text-emerald-600">Active</span></div>
+                            <div class="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between"><span>GST @ 18%</span><span class="text-emerald-600">Active</span></div>
+                            <div class="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between"><span>GST @ 28%</span><span class="text-emerald-600">Active</span></div>
+                            <div class="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between"><span>Exempted</span><span class="text-emerald-600">Active</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 5. USER MANAGEMENT TAB ================= -->
+        <section id="tab-usermgmt" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-5xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">User Management &amp; Role Access</h2>
+                    <p class="text-xs text-slate-500">Provide limited access to Salespersons and Secondary Admins and track sales/purchases by user.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3.5 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Role Permissions</h3>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="usr-enable-roles" checked onchange="triggerSettingChanged('User Role Access Updated')">
+                            <span>Enable Multi-User Role Management (Admin / Salesperson)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="usr-restrict-salesperson" checked onchange="triggerSettingChanged('Salesperson Edit/Delete Restriction Updated')">
+                            <span>Restrict Salesperson from editing or deleting any transaction</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="usr-secondary-admin" checked onchange="triggerSettingChanged('Secondary Admin Access Updated')">
+                            <span>Allow Secondary Admin role</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="usr-track-by-user" checked onchange="triggerSettingChanged('User-wise Sale Tracking Updated')">
+                            <span>Track Sales &amp; Purchases according to Salesperson &amp; Admins</span>
+                        </label>
+                    </div>
+
+                    <!-- Add User Card -->
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Add Staff / Salesperson</h3>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <input type="text" id="new-staff-name" placeholder="Staff Name" class="px-3 py-2 rounded-lg border border-slate-300 bg-white outline-none">
+                            <select id="new-staff-role" class="px-3 py-2 rounded-lg border border-slate-300 font-semibold bg-white outline-none">
+                                <option value="Salesperson">Salesperson</option>
+                                <option value="Secondary Admin">Secondary Admin</option>
+                                <option value="Biller">Biller (View &amp; Add Only)</option>
+                            </select>
+                        </div>
+                        <button type="button" onclick="addStaffUser()" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">
+                            + Add Staff Member
+                        </button>
+                        <div id="staff-user-list" class="space-y-1.5 pt-2 text-xs"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 6. TRANSACTION MESSAGE (SMS / WHATSAPP) TAB ================= -->
+        <section id="tab-message" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-5xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Transaction SMS &amp; WhatsApp Message</h2>
+                    <p class="text-xs text-slate-500">Automatically send transparent transaction messages, current party balances, and web invoice links.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3.5 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Message Preferences</h3>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="msg-send-party" checked onchange="triggerSettingChanged('Send SMS to Party Updated')">
+                            <span>Send Transaction SMS / WhatsApp to Party</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="msg-send-self" onchange="triggerSettingChanged('Send SMS Copy to Self Updated')">
+                            <span>Send SMS Copy to Self</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="msg-party-balance" checked onchange="triggerSettingChanged('Show Party Current Balance in SMS Updated')">
+                            <span>Show Party's Current Balance in SMS</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="msg-web-link" checked onchange="triggerSettingChanged('Web Invoice Link in SMS Updated')">
+                            <span>Include Web Invoice PDF Link in transaction messages</span>
+                        </label>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Select Transactions for Automatic Messaging</h3>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" id="msg-auto-sale" checked onchange="triggerSettingChanged('Auto SMS on Sale Updated')"><span>Sale Invoice</span></label>
+                            <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" id="msg-auto-purchase" onchange="triggerSettingChanged('Auto SMS on Purchase Updated')"><span>Purchase Bill</span></label>
+                            <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" id="msg-auto-payin" checked onchange="triggerSettingChanged('Auto SMS on Payment-In Updated')"><span>Payment-In</span></label>
+                            <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" id="msg-auto-payout" checked onchange="triggerSettingChanged('Auto SMS on Payment-Out Updated')"><span>Payment-Out</span></label>
+                            <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" id="msg-auto-estimate" onchange="triggerSettingChanged('Auto SMS on Estimate Updated')"><span>Estimate / Quotation</span></label>
+                            <label class="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" id="msg-auto-order" checked onchange="triggerSettingChanged('Auto SMS on Sale Order Updated')"><span>Sale Order</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 7. PARTY SETTINGS TAB ================= -->
+        <section id="tab-party" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-4xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Party Settings</h2>
+                    <p class="text-xs text-slate-500">Manage party GSTIN, grouping, shipping address, additional fields, and self-invite links.</p>
+                </div>
+
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200/90 space-y-4 text-xs font-medium text-slate-700">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="pty-gstin" checked onchange="triggerSettingChanged('Party GSTIN Number Updated')">
+                        <span>GSTIN Number (Enter GSTIN for customers &amp; suppliers)</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="pty-grouping" checked onchange="triggerSettingChanged('Party Grouping Updated')">
+                        <span>Party Grouping (Group parties &amp; track receivables/payables by group)</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="pty-shipping" checked onchange="syncPrintPreview('Party Shipping Address Updated')">
+                        <span>Party Shipping Address</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="pty-print-shipping" checked onchange="syncPrintPreview('Print Shipping Address Updated')">
+                        <span>Print Shipping Address of Party on Invoices / Bills</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="pty-additional-fields" onchange="triggerSettingChanged('Party Additional Fields Updated')">
+                        <span>Party Additional Fields (Custom fields printable on PDFs)</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="pty-invite-link" checked onchange="triggerSettingChanged('Invite Parties Link Updated')">
+                        <span>Invite Parties to add themselves via shareable link</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 8. ITEM SETTINGS TAB ================= -->
+        <section id="tab-item" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-5xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Item &amp; Stock Inventory Settings</h2>
+                    <p class="text-xs text-slate-500">Configure units, categories, party-wise item rates, batch/serial/MRP/expiry tracking, and barcode scanning.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3.5 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Core Item &amp; Stock Settings</h3>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-enable" checked onchange="triggerSettingChanged('Enable Item Updated')">
+                            <span>Enable Items in Invoices &amp; Purchase Bills</span>
+                        </label>
+                        <div>
+                            <label class="block font-semibold text-slate-600 mb-1">Item Type</label>
+                            <select id="itm-type" onchange="triggerSettingChanged('Item Type Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-semibold bg-white">
+                                <option value="Products & Services">Products and Services</option>
+                                <option value="Products Only">Products Only</option>
+                                <option value="Services Only">Services Only</option>
+                            </select>
+                        </div>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-stock-maint" checked onchange="triggerSettingChanged('Stock Maintenance Updated')">
+                            <span>Stock Maintenance (Auto-track inventory quantity &amp; stock value)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-units" checked onchange="triggerSettingChanged('Item Units Updated')">
+                            <span>Item Units (Base Unit, Secondary Unit &amp; Conversion Formula)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-default-units" checked onchange="triggerSettingChanged('Default Units Updated')">
+                            <span>Allow Default Primary &amp; Secondary Units</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-category" checked onchange="triggerSettingChanged('Item Category Updated')">
+                            <span>Item Category &amp; Category-wise Reports</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-party-wise-rate" checked onchange="triggerSettingChanged('Party-wise Item Rate Memory Updated')">
+                            <span>Party-wise Item Rate (Remember last price sold/bought for each party)</span>
+                        </label>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/90 space-y-3.5 text-xs font-medium text-slate-700">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-blue-600 border-b border-slate-200 pb-2">Pricing, Batch, MRP &amp; Expiry Columns</h3>
+                        <div>
+                            <label class="block font-semibold text-slate-600 mb-1">Quantity (up to decimal places)</label>
+                            <select id="itm-qty-decimals" onchange="triggerSettingChanged('Quantity Decimal Places Updated')" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-semibold bg-white">
+                                <option value="2">2 Decimal Places (e.g. 1.50 Kg)</option>
+                                <option value="0">Whole Numbers (0)</option>
+                                <option value="3">3 Decimal Places (e.g. 1.250 Gm)</option>
+                            </select>
+                        </div>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-wise-tax" checked onchange="triggerSettingChanged('Item Wise Tax Updated')">
+                            <span>Item-wise Tax</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-wise-discount" checked onchange="triggerSettingChanged('Item Wise Discount Updated')">
+                            <span>Item-wise Discount</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-update-price-txn" onchange="triggerSettingChanged('Update Sale Price from Transaction Updated')">
+                            <span>Update Sale Price from Transaction automatically</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-batch-mrp-exp" checked onchange="triggerSettingChanged('Batch, MRP & Expiry Tracking Updated')">
+                            <span>Additional Item Columns (Batch No., MRP, Mfg Date, Expiry Date, Serial No.)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="itm-description" checked onchange="triggerSettingChanged('Item Description Updated')">
+                            <span>Allow Item Description</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 9. SERVICE & PAYMENT REMINDERS TAB ================= -->
+        <section id="tab-reminders" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-4xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Payment &amp; Service Reminders</h2>
+                    <p class="text-xs text-slate-500">Get automatic follow-up notifications and customize reminder messages to recover party dues faster.</p>
+                </div>
+
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200/90 space-y-4 text-xs font-medium text-slate-700">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="rem-self" checked onchange="triggerSettingChanged('Self Payment Reminder Updated')">
+                        <span>Self Payment Reminder (Get follow-up notifications for overdue party payments)</span>
+                    </label>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="font-semibold text-slate-700">Remind for payment due more than:</span>
+                        <input type="number" id="rem-due-days" value="3" min="1" max="365" oninput="triggerSettingChanged('Payment Reminder Days Updated')" class="w-20 px-3 py-1.5 rounded-lg border border-slate-300 font-bold bg-white text-center">
+                        <span>Days (from the invoice due date)</span>
+                    </div>
+
+                    <div class="pt-2">
+                        <label class="block font-semibold text-slate-700 mb-1.5">Reminder Message Template to Party</label>
+                        <textarea id="rem-template" rows="3" oninput="triggerSettingChanged('Reminder Message Template Updated')" class="w-full p-3 rounded-xl border border-slate-300 bg-white text-xs text-slate-800 outline-none">Dear [Party_Name], a payment of [Balance_Amount] is pending towards [Company_Name]. Kindly clear the dues at the earliest.</textarea>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 10. ACCOUNTING TAB ================= -->
+        <section id="tab-accounting" class="settings-tab-panel hidden flex-1 overflow-y-auto p-6 sm:p-8 thin-scroll">
+            <div class="max-w-4xl space-y-6">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-900">Accounting &amp; Balance Sheet Settings</h2>
+                    <p class="text-xs text-slate-500">Configure double-entry ledger automation, Balance Sheet (Assets, Liabilities &amp; Equity), and Tally export.</p>
+                </div>
+
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200/90 space-y-4 text-xs font-medium text-slate-700">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="acc-balance-sheet" checked onchange="triggerSettingChanged('Balance Sheet Module Updated')">
+                        <span>Enable Live Balance Sheet (Track Assets, Liabilities &amp; Equity/Capital)</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="acc-bill-wise-profit" checked onchange="triggerSettingChanged('Bill-wise Profit Updated')">
+                        <span>Enable Bill-wise &amp; Party-wise Profit &amp; Loss Calculation</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="acc-tally-export" checked onchange="triggerSettingChanged('Tally XML Export Updated')">
+                        <span>Enable Tally Export Compatibility</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        let companyData = {};
+        let appSettings = {};
+        let toastTimeout = null;
+
+        // ================= INDEXEDDB FILE HANDLE HELPER =================
+        function openHandleDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open('VyaparDBStorage', 1);
+                req.onupgradeneeded = () => req.result.createObjectStore('fileHandles');
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function getSavedFileHandle() {
+            try {
+                const db = await openHandleDB();
+                const tx = db.transaction('fileHandles', 'readonly');
+                const req = tx.objectStore('fileHandles').get('activeDtaHandle');
+                return new Promise((resolve) => {
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ================= INITIALIZE SETTINGS FROM .DTA =================
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadSettingsFromDta();
+            populateAllSettingsInputs();
+            syncPrintPreview();
+        });
+
+        async function loadSettingsFromDta() {
+            try {
+                let zip = null;
+                const b64 = sessionStorage.getItem('vyapar_active_archive_b64');
+                if (b64) {
+                    zip = await JSZip.loadAsync(b64, { base64: true });
+                } else {
+                    const handle = await getSavedFileHandle();
+                    if (handle) {
+                        const file = await handle.getFile();
+                        zip = await JSZip.loadAsync(file);
+                        sessionStorage.setItem('vyapar_active_archive_b64', await zip.generateAsync({ type: "base64" }));
+                    }
+                }
+
+                if (zip) {
+                    if (zip.file("company.json")) {
+                        companyData = JSON.parse(await zip.file("company.json").async("string"));
+                    }
+                    if (zip.file("settings.json")) {
+                        appSettings = JSON.parse(await zip.file("settings.json").async("string"));
+                    }
+                }
+            } catch (err) {
+                console.error("Failed loading settings from .dta:", err);
+            }
+        }
+
+        function populateAllSettingsInputs() {
+            const cName = companyData.businessName || "MINI MART";
+            const cPhone = companyData.mobileNo || "9170896819";
+            const cAddr = companyData.address || "";
+            const cEmail = companyData.email || "";
+            const cGstin = companyData.gstin || "";
+
+            document.getElementById('header-company-badge').textContent = `Company: ${cName}`;
+            document.getElementById('print-company-name').value = cName;
+            document.getElementById('print-phone').value = cPhone;
+            document.getElementById('print-address').value = cAddr;
+            document.getElementById('print-email').value = cEmail;
+            document.getElementById('print-gstin').value = cGstin;
+
+            if (companyData.logo && companyData.logo.startsWith('data:image')) {
+                const img = document.getElementById('preview-logo-img');
+                img.src = companyData.logo;
+                img.classList.remove('hidden');
+                document.getElementById('preview-logo-placeholder').classList.add('hidden');
+            }
+
+            // Restore saved settings map if present
+            if (appSettings && appSettings.controls) {
+                Object.entries(appSettings.controls).forEach(([id, val]) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    if (el.type === 'checkbox') {
+                        el.checked = Boolean(val);
+                    } else {
+                        el.value = val;
+                    }
+                });
+            }
+
+            renderStaffUsers();
+        }
+
+        // ================= TOP-RIGHT GREEN NOTIFICATION TOAST (NO REDIRECT) =================
+        function showGreenNotification(titleText) {
+            const toast = document.getElementById('save-toast');
+            const title = document.getElementById('save-toast-title');
+            title.textContent = titleText || "Setting Saved";
+
+            toast.classList.remove('hidden');
+            toast.classList.add('flex');
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('flex');
+            }, 2200);
+        }
+
+        async function triggerSettingChanged(toastLabel) {
+            showGreenNotification(toastLabel || "Setting Updated");
+            await persistSettingsToDta();
+        }
+
+        async function persistSettingsToDta() {
+            const controls = {};
+            document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+                if (el.type === 'file') return;
+                controls[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+            });
+
+            appSettings.controls = controls;
+            appSettings.updatedAt = new Date().toISOString();
+
+            // Sync company header edits back to companyData
+            companyData.businessName = document.getElementById('print-company-name').value.trim() || companyData.businessName;
+            companyData.mobileNo = document.getElementById('print-phone').value.trim();
+            companyData.address = document.getElementById('print-address').value.trim();
+            companyData.email = document.getElementById('print-email').value.trim();
+            companyData.gstin = document.getElementById('print-gstin').value.trim().toUpperCase();
+
+            document.getElementById('header-company-badge').textContent = `Company: ${companyData.businessName || 'MINI MART'}`;
+
+            try {
+                const b64 = sessionStorage.getItem('vyapar_active_archive_b64');
+                let zip = b64 ? await JSZip.loadAsync(b64, { base64: true }) : new JSZip();
+
+                zip.file("company.json", JSON.stringify(companyData, null, 2));
+                zip.file("settings.json", JSON.stringify(appSettings, null, 2));
+
+                const updatedB64 = await zip.generateAsync({ type: "base64", compression: "DEFLATE" });
+                sessionStorage.setItem('vyapar_active_archive_b64', updatedB64);
+
+                const handle = await getSavedFileHandle();
+                if (handle) {
+                    const perm = await handle.queryPermission({ mode: 'readwrite' });
+                    if (perm === 'granted') {
+                        const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+                        const writable = await handle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                    }
+                }
+            } catch (e) {
+                console.error("Error persisting settings:", e);
+            }
+        }
+
+        // ================= SIDEBAR TAB SWITCHING =================
+        function switchSettingsTab(tabKey) {
+            document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+                if (btn.getAttribute('data-tab') === tabKey) {
+                    btn.classList.add('active');
+                    document.getElementById('active-section-label').textContent = `${btn.textContent.trim()} SETTINGS`;
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            document.querySelectorAll('.settings-tab-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+
+            const activePanel = document.getElementById(`tab-${tabKey}`);
+            if (activePanel) activePanel.classList.remove('hidden');
+        }
+
+        function toggleSettingsSearch() {
+            const box = document.getElementById('settings-search-box');
+            box.classList.toggle('hidden');
+            if (!box.classList.contains('hidden')) {
+                document.getElementById('settings-search-input').focus();
+            }
+        }
+
+        function filterSidebarSettings(query) {
+            const q = query.trim().toLowerCase();
+            document.querySelectorAll('#settings-nav-list .settings-nav-btn').forEach(btn => {
+                const txt = btn.textContent.toLowerCase();
+                btn.style.display = txt.includes(q) ? 'block' : 'none';
+            });
+        }
+
+        // ================= LIVE TAX INVOICE PREVIEW ENGINE =================
+        function selectPrinterType(type) {
+            const regBtn = document.getElementById('printer-tab-regular');
+            const thmBtn = document.getElementById('printer-tab-thermal');
+            const pageSelect = document.getElementById('print-page-size');
+
+            if (type === 'thermal') {
+                thmBtn.className = "px-4 py-3 text-xs font-extrabold tracking-wide text-blue-600 border-b-2 border-blue-600 transition-colors";
+                regBtn.className = "px-4 py-3 text-xs font-bold tracking-wide text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-colors";
+                pageSelect.value = '3inch';
+            } else {
+                regBtn.className = "px-4 py-3 text-xs font-extrabold tracking-wide text-blue-600 border-b-2 border-blue-600 transition-colors";
+                thmBtn.className = "px-4 py-3 text-xs font-bold tracking-wide text-slate-500 hover:text-slate-800 border-b-2 border-transparent transition-colors";
+                pageSelect.value = 'A4';
+            }
+            syncPrintPreview(type === 'thermal' ? 'Thermal Printer Selected' : 'Regular Printer Selected');
+        }
+
+        function switchPrintSubtab(sub) {
+            const layoutBtn = document.getElementById('subtab-layout-btn');
+            const colorsBtn = document.getElementById('subtab-colors-btn');
+            const layoutBox = document.getElementById('print-subtab-layout');
+            const colorsBox = document.getElementById('print-subtab-colors');
+
+            if (sub === 'colors') {
+                colorsBtn.className = "px-3 py-2 text-[11px] font-extrabold text-blue-600 border-b-2 border-pink-500";
+                layoutBtn.className = "px-3 py-2 text-[11px] font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent";
+                colorsBox.classList.remove('hidden');
+                layoutBox.classList.add('hidden');
+            } else {
+                layoutBtn.className = "px-3 py-2 text-[11px] font-extrabold text-blue-600 border-b-2 border-pink-500";
+                colorsBtn.className = "px-3 py-2 text-[11px] font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent";
+                layoutBox.classList.remove('hidden');
+                colorsBox.classList.add('hidden');
+            }
+        }
+
+        function selectInvoiceTheme(themeName, cardEl) {
+            document.querySelectorAll('.theme-card').forEach(c => {
+                c.classList.remove('border-blue-600', 'bg-blue-50/40');
+                c.classList.add('border-slate-200');
+            });
+            cardEl.classList.remove('border-slate-200');
+            cardEl.classList.add('border-blue-600', 'bg-blue-50/40');
+
+            document.getElementById('preview-theme-badge').textContent = themeName;
+            syncPrintPreview(`Invoice Theme: ${themeName}`);
+        }
+
+        function selectInvoiceColor(hexColor) {
+            const headRow = document.getElementById('preview-table-head');
+            const title = document.getElementById('preview-invoice-title');
+            headRow.style.backgroundColor = hexColor;
+            headRow.style.color = '#ffffff';
+            title.style.color = hexColor;
+            triggerSettingChanged('Invoice Color Updated');
+        }
+
+        function handlePrintLogoChange(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                companyData.logo = ev.target.result;
+                const img = document.getElementById('preview-logo-img');
+                img.src = companyData.logo;
+                img.classList.remove('hidden');
+                document.getElementById('preview-logo-placeholder').classList.add('hidden');
+                syncPrintPreview('Company Logo Updated');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function syncPrintPreview(notificationText) {
+            const showName = document.getElementById('chk-print-company-name').checked;
+            const nameVal = document.getElementById('print-company-name').value.trim() || "MINI MART";
+            const showLogo = document.getElementById('chk-print-logo').checked;
+            const showAddr = document.getElementById('chk-print-address').checked;
+            const addrVal = document.getElementById('print-address').value.trim();
+            const showEmail = document.getElementById('chk-print-email').checked;
+            const emailVal = document.getElementById('print-email').value.trim();
+            const showPhone = document.getElementById('chk-print-phone').checked;
+            const phoneVal = document.getElementById('print-phone').value.trim();
+            const showGstin = document.getElementById('chk-print-gstin').checked;
+            const gstinVal = document.getElementById('print-gstin').value.trim().toUpperCase();
+
+            document.getElementById('preview-company-name').textContent = nameVal;
+            document.getElementById('preview-company-name').classList.toggle('hidden', !showName);
+            document.getElementById('preview-sign-company').textContent = nameVal;
+            document.getElementById('preview-logo-box').classList.toggle('hidden', !showLogo);
+
+            const addrEl = document.getElementById('preview-company-address');
+            addrEl.textContent = addrVal;
+            addrEl.classList.toggle('hidden', !showAddr || !addrVal);
+
+            const phoneEl = document.getElementById('preview-company-phone');
+            phoneEl.textContent = `Phone: ${phoneVal}`;
+            phoneEl.classList.toggle('hidden', !showPhone || !phoneVal);
+
+            const emailEl = document.getElementById('preview-company-email');
+            emailEl.textContent = `Email: ${emailVal}`;
+            emailEl.classList.toggle('hidden', !showEmail || !emailVal);
+
+            const gstinEl = document.getElementById('preview-company-gstin');
+            gstinEl.textContent = `GSTIN: ${gstinVal}`;
+            gstinEl.classList.toggle('hidden', !showGstin || !gstinVal);
+
+            // Page size & Thermal width simulation
+            const pageSize = document.getElementById('print-page-size').value;
+            const sheet = document.getElementById('live-invoice-sheet');
+            document.getElementById('preview-paper-badge').textContent = `Page: ${pageSize}`;
+
+            if (pageSize === '2inch' || pageSize === '3inch' || pageSize === '4inch') {
+                sheet.style.maxWidth = pageSize === '2inch' ? '330px' : pageSize === '3inch' ? '390px' : '460px';
+            } else {
+                sheet.style.maxWidth = '660px';
+            }
+
+            // Transaction & Party Toggles reflected on Live Invoice
+            const prefixSale = document.getElementById('prefix-sale').value || 'INV-';
+            document.getElementById('preview-inv-no').textContent = `${prefixSale}101`;
+            document.getElementById('preview-time-row').classList.toggle('hidden', !document.getElementById('txn-print-time').checked);
+            document.getElementById('preview-due-row').classList.toggle('hidden', !document.getElementById('txn-due-dates').checked);
+            document.getElementById('preview-po-row').classList.toggle('hidden', !document.getElementById('txn-po-details').checked);
+            document.getElementById('preview-eway-row').classList.toggle('hidden', !document.getElementById('gst-eway-bill').checked);
+            document.getElementById('preview-shipto-row').classList.toggle('hidden', !document.getElementById('pty-print-shipping').checked);
+
+            // Totals & Footer Toggles
+            document.getElementById('preview-tax-summary-col').classList.toggle('hidden', !document.getElementById('chk-print-tax-summary').checked);
+            document.getElementById('preview-words-box').classList.toggle('hidden', !document.getElementById('chk-print-words').checked);
+            document.getElementById('preview-received-row').classList.toggle('hidden', !document.getElementById('chk-print-received').checked);
+            document.getElementById('preview-footer-row').classList.toggle('hidden', !document.getElementById('chk-print-terms').checked);
+            document.getElementById('preview-terms-output').textContent = document.getElementById('print-terms-text').value;
+
+            if (notificationText) {
+                triggerSettingChanged(notificationText);
+            } else {
+                persistSettingsToDta();
+            }
+        }
+
+        // ================= STAFF USER MANAGEMENT =================
+        function addStaffUser() {
+            const nameInput = document.getElementById('new-staff-name');
+            const roleSelect = document.getElementById('new-staff-role');
+            const name = nameInput.value.trim();
+            if (!name) return;
+
+            if (!appSettings.staffUsers) appSettings.staffUsers = [];
+            appSettings.staffUsers.push({ name, role: roleSelect.value });
+            nameInput.value = '';
+            renderStaffUsers();
+            triggerSettingChanged(`Added ${name} (${roleSelect.value})`);
+        }
+
+        function removeStaffUser(idx) {
+            if (!appSettings.staffUsers) return;
+            appSettings.staffUsers.splice(idx, 1);
+            renderStaffUsers();
+            triggerSettingChanged('Staff User Removed');
+        }
+
+        function renderStaffUsers() {
+            const container = document.getElementById('staff-user-list');
+            const list = appSettings.staffUsers || [];
+            if (list.length === 0) {
+                container.innerHTML = '<p class="text-slate-400">No additional staff users added yet.</p>';
+                return;
+            }
+            container.innerHTML = '';
+            list.forEach((u, idx) => {
+                const row = document.createElement('div');
+                row.className = 'p-2 rounded-lg bg-white border border-slate-200 flex items-center justify-between';
+                row.innerHTML = `
+                    <div>
+                        <span class="font-bold text-slate-800">${u.name}</span>
+                        <span class="ml-2 px-2 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">${u.role}</span>
+                    </div>
+                    <button type="button" onclick="removeStaffUser(${idx})" class="text-red-500 hover:text-red-700 font-bold">Remove</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vyapar Pro — Business Dashboard</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip for reading/writing the .dta database -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .sidebar-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.14);
+            border-radius: 99px;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        .submenu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+            opacity: 0;
+        }
+        .submenu.open {
+            max-height: 360px;
+            opacity: 1;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-card {
+            animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-[#eef2f6] text-slate-800 flex flex-col select-none">
+
+    <!-- ================= MAIN FLEX SHELL (SIDEBAR + CONTENT) ================= -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Mobile Backdrop -->
+        <div id="sidebar-backdrop" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-slate-900/50 z-30 lg:hidden hidden"></div>
+
+        <!-- ================= LEFT DARK SIDEBAR ================= -->
+        <aside id="main-sidebar" class="w-[235px] bg-[#161926] text-slate-300 flex flex-col shrink-0 z-40 fixed lg:static inset-y-0 left-0 -translate-x-full lg:translate-x-0 transition-transform duration-300">
+            
+            <!-- Top Pill: Open Anything / Open Purchase Invoices -->
+            <div class="p-3 pb-2.5">
+                <button type="button" onclick="openModulePage('purchase.html')" class="w-full py-2 px-3.5 rounded-full bg-[#24293d] hover:bg-[#2e344d] border border-white/5 text-left text-xs font-medium text-slate-300 flex items-center justify-between transition-colors">
+                    <span class="truncate">Open Purchase Invoices</span>
+                    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Scrollable Sidebar Options -->
+            <nav class="flex-1 overflow-y-auto sidebar-scroll py-1 space-y-0.5 text-[13px] font-medium">
+                
+                <!-- 1. Home (Active) -->
+                <a href="shop.html" onclick="closeEditProfileView(event)" class="flex items-center gap-3 px-4 py-2.5 bg-[#252a41] text-white font-semibold border-l-[3px] border-red-500 transition-colors">
+                    <svg class="w-[18px] h-[18px] text-white shrink-0" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    <span>Home</span>
+                </a>
+
+                <!-- 2. Parties (Dropdown) -->
+                <div>
+                    <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="toggleSubmenu('sub-parties', 'chev-parties')">
+                        <div class="flex items-center gap-3" onclick="event.stopPropagation(); openModulePage('parties.html')">
+                            <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            <span class="hover:text-white">Parties</span>
+                        </div>
+                        <svg id="chev-parties" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div id="sub-parties" class="submenu bg-[#10131d] pl-11 pr-3 py-1 space-y-1 text-xs text-slate-400">
+                        <button type="button" onclick="openModulePage('parties.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Party Details</button>
+                        <button type="button" onclick="openModulePage('loyalty-points.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Loyalty Points</button>
+                    </div>
+                </div>
+
+                <!-- 3. Items (+ Icon) -->
+                <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="openModulePage('items.html')">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                        <span class="hover:text-white">Items</span>
+                    </div>
+                    <span onclick="event.stopPropagation(); openModulePage('items.html?action=add')" class="w-5 h-5 rounded hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white font-bold text-base leading-none">+</span>
+                </div>
+
+                <!-- 4. Sale (Dropdown) -->
+                <div>
+                    <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="toggleSubmenu('sub-sale', 'chev-sale')">
+                        <div class="flex items-center gap-3" onclick="event.stopPropagation(); openModulePage('sale.html')">
+                            <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+                            </svg>
+                            <span class="hover:text-white">Sale</span>
+                        </div>
+                        <svg id="chev-sale" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div id="sub-sale" class="submenu bg-[#10131d] pl-11 pr-3 py-1 space-y-1 text-xs text-slate-400">
+                        <button type="button" onclick="openModulePage('sale.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Sale Invoices</button>
+                        <button type="button" onclick="openModulePage('estimate.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Estimate / Quotation</button>
+                        <button type="button" onclick="openModulePage('payment-in.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Payment In</button>
+                        <button type="button" onclick="openModulePage('sale-order.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Sale Order</button>
+                        <button type="button" onclick="openModulePage('delivery-challan.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Delivery Challan</button>
+                        <button type="button" onclick="openModulePage('sale-return.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Sale Return / Cr. Note</button>
+                    </div>
+                </div>
+
+                <!-- 5. Purchase & Expense (Dropdown) -->
+                <div>
+                    <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="toggleSubmenu('sub-purchase', 'chev-purchase')">
+                        <div class="flex items-center gap-3" onclick="event.stopPropagation(); openModulePage('purchase.html')">
+                            <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            <span class="hover:text-white">Purchase &amp; Expense</span>
+                        </div>
+                        <svg id="chev-purchase" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div id="sub-purchase" class="submenu bg-[#10131d] pl-11 pr-3 py-1 space-y-1 text-xs text-slate-400">
+                        <button type="button" onclick="openModulePage('purchase.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Purchase Bills</button>
+                        <button type="button" onclick="openModulePage('payment-out.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Payment Out</button>
+                        <button type="button" onclick="openModulePage('expenses.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Expenses</button>
+                        <button type="button" onclick="openModulePage('purchase-order.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Purchase Order</button>
+                        <button type="button" onclick="openModulePage('purchase-return.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Purchase Return / Dr. Note</button>
+                    </div>
+                </div>
+
+                <!-- 6. Cash & Bank (Dropdown) -->
+                <div>
+                    <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="toggleSubmenu('sub-cash', 'chev-cash')">
+                        <div class="flex items-center gap-3" onclick="event.stopPropagation(); openModulePage('cash-bank.html')">
+                            <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                            </svg>
+                            <span class="hover:text-white">Cash &amp; Bank</span>
+                        </div>
+                        <svg id="chev-cash" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div id="sub-cash" class="submenu bg-[#10131d] pl-11 pr-3 py-1 space-y-1 text-xs text-slate-400">
+                        <button type="button" onclick="openModulePage('bank-accounts.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Bank Accounts</button>
+                        <button type="button" onclick="openModulePage('cash-in-hand.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Cash In Hand</button>
+                        <button type="button" onclick="openModulePage('cheques.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Cheques</button>
+                        <button type="button" onclick="openModulePage('loan-accounts.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Loan Accounts</button>
+                    </div>
+                </div>
+
+                <!-- 7. Reports -->
+                <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="openModulePage('reports.html')">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                        <span class="hover:text-white">Reports</span>
+                    </div>
+                </div>
+
+                <!-- 8. Sync, Share & Backup (Dropdown) -->
+                <div>
+                    <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="toggleSubmenu('sub-sync', 'chev-sync')">
+                        <div class="flex items-center gap-3" onclick="event.stopPropagation(); openModulePage('sync-backup.html')">
+                            <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span class="hover:text-white">Sync, Share &amp; Backup</span>
+                        </div>
+                        <svg id="chev-sync" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div id="sub-sync" class="submenu bg-[#10131d] pl-11 pr-3 py-1 space-y-1 text-xs text-slate-400">
+                        <button type="button" onclick="downloadBackupDta()" class="block w-full text-left py-1.5 text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">Download .dta Backup</button>
+                        <button type="button" onclick="openModulePage('sync-backup.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Sync &amp; Share Settings</button>
+                        <button type="button" onclick="openModulePage('restore-backup.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Restore Backup</button>
+                    </div>
+                </div>
+
+                <!-- 9. Other Products -->
+                <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="openModulePage('other-products.html')">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                        <span class="hover:text-white">Other Products</span>
+                    </div>
+                </div>
+
+                <!-- 10. Bulk GST Update -->
+                <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="openModulePage('bulk-gst.html')">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span class="hover:text-white">Bulk GST Update</span>
+                    </div>
+                </div>
+
+                <!-- 11. Utilities (Dropdown) -->
+                <div>
+                    <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="toggleSubmenu('sub-utilities', 'chev-utilities')">
+                        <div class="flex items-center gap-3" onclick="event.stopPropagation(); openModulePage('utilities.html')">
+                            <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            </svg>
+                            <span class="hover:text-white">Utilities</span>
+                        </div>
+                        <svg id="chev-utilities" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                    <div id="sub-utilities" class="submenu bg-[#10131d] pl-11 pr-3 py-1 space-y-1 text-xs text-slate-400">
+                        <button type="button" onclick="openModulePage('import-items.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Import Items</button>
+                        <button type="button" onclick="openModulePage('barcode-generator.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Barcode Generator</button>
+                        <button type="button" onclick="openModulePage('export-tally.html')" class="block w-full text-left py-1.5 hover:text-white transition-colors">Export to Tally</button>
+                    </div>
+                </div>
+
+                <!-- 12. Settings -->
+                <div class="flex items-center justify-between px-4 py-2.5 hover:bg-white/5 cursor-pointer transition-colors" onclick="openModulePage('settings.html')">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-[18px] h-[18px] text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <span class="hover:text-white">Settings</span>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Bottom Company Pill (Opens Edit Profile View matching Screenshot 1) -->
+            <div class="p-2.5 border-t border-white/10 bg-[#121520]">
+                <div onclick="openEditProfileView()" class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#22273b] hover:bg-[#2b3149] cursor-pointer transition-colors group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-7 h-7 rounded-full bg-blue-500/20 border border-white/15 flex items-center justify-center overflow-hidden shrink-0">
+                            <img id="sidebar-shop-logo" src="" alt="Logo" class="hidden w-full h-full object-cover">
+                            <span id="sidebar-shop-initial" class="text-xs font-extrabold text-blue-300">+</span>
+                        </div>
+                        <div class="min-w-0">
+                            <p id="sidebar-shop-name" class="text-xs font-bold text-white truncate">My Shop</p>
+                            <p id="sidebar-owner-name" class="text-[10px] text-slate-400 truncate">Owner</p>
+                        </div>
+                    </div>
+                    <svg class="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ================= RIGHT MAIN WORKSPACE ================= -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+
+            <!-- Search & Quick Action Header Bar -->
+            <header class="h-14 bg-white border-b border-slate-200 px-4 lg:px-6 flex items-center justify-between gap-4 shrink-0">
+                
+                <!-- Mobile Menu Toggle + Search Transactions Input -->
+                <div class="flex items-center gap-2.5 flex-1 max-w-md text-slate-400 focus-within:text-slate-700">
+                    <button type="button" onclick="toggleMobileSidebar()" class="lg:hidden p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input
+                        type="text"
+                        id="global-search-input"
+                        placeholder="Search Transactions"
+                        class="w-full text-sm text-slate-800 placeholder-slate-400 bg-transparent outline-none"
+                    >
+                </div>
+
+                <!-- Right Action Buttons (+ Add Sale, + Add Purchase, Pinned Shortcuts, +, Print, More) -->
+                <div class="flex items-center gap-2 overflow-x-auto py-1">
+                    <!-- + Add Sale -->
+                    <button type="button" onclick="openModulePage('sale.html?action=new')" class="px-4 py-2 rounded-full bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold shadow-sm hover:shadow transition-all flex items-center gap-1.5 shrink-0">
+                        <span class="text-sm leading-none">+</span>
+                        <span>Add Sale</span>
+                    </button>
+
+                    <!-- + Add Purchase -->
+                    <button type="button" onclick="openModulePage('purchase.html?action=new')" class="px-4 py-2 rounded-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold shadow-sm hover:shadow transition-all flex items-center gap-1.5 shrink-0">
+                        <span class="text-sm leading-none">+</span>
+                        <span>Add Purchase</span>
+                    </button>
+
+                    <!-- Dynamic Pinned Sidebar Shortcuts Container -->
+                    <div id="custom-header-shortcuts" class="flex items-center gap-2 shrink-0"></div>
+
+                    <!-- + Pin Sidebar Option Shortcut Button -->
+                    <button type="button" onclick="openShortcutModal()" title="Pin Sidebar Shortcut Button" class="w-8 h-8 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-base flex items-center justify-center transition-colors shrink-0 border border-blue-200/60">
+                        +
+                    </button>
+
+                    <div class="h-5 w-[1px] bg-slate-200 mx-1 hidden sm:block shrink-0"></div>
+
+                    <!-- Print Icon -->
+                    <button type="button" onclick="window.print()" title="Print Dashboard Summary" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors hidden sm:flex shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Settings Quick Icon -->
+                    <button type="button" onclick="openModulePage('settings.html')" title="Settings" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ================= 1. DASHBOARD ANALYTICS VIEW ================= -->
+            <main id="dashboard-main-view" class="flex-1 overflow-y-auto p-3 sm:p-4">
+                
+                <!-- Business Welcome Banner -->
+                <div class="bg-white rounded-xl border border-slate-200/90 px-4 py-3 mb-3 flex flex-wrap items-center justify-between gap-3 shadow-2xs animate-card">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                            <img id="banner-shop-logo" src="" alt="Shop Logo" class="hidden w-full h-full object-cover">
+                            <div id="banner-default-logo" class="w-full h-full bg-gradient-to-br from-red-500 to-blue-600 text-white font-extrabold text-base flex items-center justify-center">
+                                V
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h1 id="banner-shop-name" class="text-base font-extrabold text-slate-900">My Shop</h1>
+                                <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-200">Active</span>
+                            </div>
+                            <p id="banner-owner-details" class="text-xs text-slate-500 font-medium">
+                                Owner: Admin &bull; Location: India
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 text-xs">
+                        <button type="button" onclick="openEditProfileView()" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold text-slate-700 transition-colors">
+                            Edit Profile
+                        </button>
+                        <button type="button" onclick="logoutToLogin()" class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 font-semibold text-red-600 transition-colors">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 12-Column Vyapar Analytics Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                    
+                    <!-- LEFT/CENTER 8 COLUMNS -->
+                    <div class="lg:col-span-8 flex flex-col gap-3">
+                        
+                        <!-- Row 1: Total Receivable & Total Payable -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div onclick="openModulePage('parties.html?filter=receivable')" class="bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs hover:shadow-md transition-all cursor-pointer animate-card">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div>
+                                        <p class="text-xs font-semibold text-slate-500 mb-1.5">Total Receivable</p>
+                                        <h2 id="kpi-receivable" class="text-2xl font-extrabold text-slate-900">₹ 0</h2>
+                                    </div>
+                                    <div class="w-9 h-9 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p id="kpi-receivable-sub" class="text-xs text-slate-400 font-medium">
+                                    You don't have any receivables as of now.
+                                </p>
+                            </div>
+
+                            <div onclick="openModulePage('parties.html?filter=payable')" class="bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs hover:shadow-md transition-all cursor-pointer animate-card">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div>
+                                        <p class="text-xs font-semibold text-slate-500 mb-1.5">Total Payable</p>
+                                        <h2 id="kpi-payable" class="text-2xl font-extrabold text-slate-900">₹ 0</h2>
+                                    </div>
+                                    <div class="w-9 h-9 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p id="kpi-payable-sub" class="text-xs text-slate-400 font-medium">
+                                    You don't have any payables as of now.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Total Sale Chart Card -->
+                        <div class="bg-white rounded-xl border border-slate-200/90 p-5 shadow-2xs animate-card">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 mb-1">Total Sale</p>
+                                    <h2 id="kpi-total-sale" class="text-2xl font-extrabold text-slate-900">₹ 0</h2>
+                                </div>
+
+                                <div class="relative">
+                                    <select id="sale-period-select" onchange="updateSaleChartPeriod()" class="appearance-none pl-4 pr-9 py-1.5 rounded-full bg-blue-50/80 hover:bg-blue-100/70 text-slate-700 font-semibold text-xs outline-none cursor-pointer transition-colors">
+                                        <option value="This Month">This Month</option>
+                                        <option value="Last Month">Last Month</option>
+                                        <option value="This Quarter">This Quarter</option>
+                                        <option value="This Year">This Year</option>
+                                    </select>
+                                    <svg class="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div class="relative h-[250px] w-full pt-2 pb-6 pl-8 pr-2">
+                                <div class="h-full flex flex-col justify-between text-[11px] text-slate-400 font-medium relative">
+                                    <div class="flex items-center w-full">
+                                        <span class="w-7 text-right pr-2">1</span>
+                                        <div class="flex-1 border-b border-slate-100"></div>
+                                    </div>
+                                    <div class="flex items-center w-full">
+                                        <span class="w-7 text-right pr-2">0.8</span>
+                                        <div class="flex-1 border-b border-slate-100"></div>
+                                    </div>
+                                    <div class="flex items-center w-full">
+                                        <span class="w-7 text-right pr-2">0.6</span>
+                                        <div class="flex-1 border-b border-slate-100"></div>
+                                    </div>
+                                    <div class="flex items-center w-full">
+                                        <span class="w-7 text-right pr-2">0.4</span>
+                                        <div class="flex-1 border-b border-slate-100"></div>
+                                    </div>
+                                    <div class="flex items-center w-full">
+                                        <span class="w-7 text-right pr-2">0.2</span>
+                                        <div class="flex-1 border-b border-slate-100"></div>
+                                    </div>
+                                    <div class="flex items-center w-full">
+                                        <span class="w-7 text-right pr-2">0</span>
+                                        <div class="flex-1 border-b border-blue-400"></div>
+                                    </div>
+
+                                    <svg id="sale-chart-svg" class="absolute inset-0 left-7 w-[calc(100%-1.75rem)] h-full overflow-visible pointer-events-none" preserveAspectRatio="none" viewBox="0 0 600 200">
+                                        <polyline id="sale-chart-line" fill="none" stroke="#3b82f6" stroke-width="2.5" points="0,200 600,200" />
+                                    </svg>
+                                </div>
+
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 font-medium pl-7 pt-2">
+                                    <span>1 Dec</span>
+                                    <span>4 Dec</span>
+                                    <span>7 Dec</span>
+                                    <span>10 Dec</span>
+                                    <span>13 Dec</span>
+                                    <span>16 Dec</span>
+                                    <span>19 Dec</span>
+                                    <span>22 Dec</span>
+                                    <span>25 Dec</span>
+                                    <span>28 Dec</span>
+                                    <span>31 Dec</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Most Used Reports -->
+                        <div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-2xs animate-card">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-xs font-semibold text-slate-500">Most Used Reports</h3>
+                                <button type="button" onclick="openModulePage('reports.html')" class="text-xs font-bold text-blue-600 hover:underline">
+                                    View All
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
+                                <button type="button" onclick="openModulePage('reports.html?type=sale')" class="flex items-center justify-between px-4 py-3.5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:bg-blue-50/20 text-left transition-all group">
+                                    <span class="text-xs font-bold text-slate-800">Sale Report</span>
+                                    <svg class="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </button>
+
+                                <button type="button" onclick="openModulePage('reports.html?type=transactions')" class="flex items-center justify-between px-4 py-3.5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:bg-blue-50/20 text-left transition-all group">
+                                    <span class="text-xs font-bold text-slate-800">All Transactions</span>
+                                    <svg class="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </button>
+
+                                <button type="button" onclick="openModulePage('reports.html?type=daybook')" class="flex items-center justify-between px-4 py-3.5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:bg-blue-50/20 text-left transition-all group">
+                                    <span class="text-xs font-bold text-slate-800">Daybook Report</span>
+                                    <svg class="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </button>
+
+                                <button type="button" onclick="openModulePage('reports.html?type=party-statement')" class="flex items-center justify-between px-4 py-3.5 rounded-xl border border-slate-200/90 hover:border-blue-400 hover:bg-blue-50/20 text-left transition-all group">
+                                    <span class="text-xs font-bold text-slate-800">Party Statement</span>
+                                    <svg class="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT 4 COLUMNS: WIDGET PANEL -->
+                    <div class="lg:col-span-4 bg-white rounded-xl border border-slate-200/90 p-5 flex flex-col justify-between min-h-[460px] shadow-2xs animate-card">
+                        <div id="widget-empty-state" class="flex-1 flex flex-col items-center justify-center text-center px-4 py-8">
+                            <div class="w-36 h-36 rounded-full bg-gradient-to-b from-blue-50 to-blue-100/70 flex items-center justify-center mb-5 relative">
+                                <svg class="w-20 h-20 text-blue-500" viewBox="0 0 64 64" fill="none">
+                                    <rect x="10" y="24" width="44" height="30" rx="3" fill="#ffffff" stroke="#60a5fa" stroke-width="2.5"/>
+                                    <path d="M8 24L13 12H51L56 24H8Z" fill="#93c5fd" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round"/>
+                                    <rect x="16" y="32" width="14" height="12" rx="1.5" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+                                    <rect x="35" y="32" width="12" height="22" rx="1.5" fill="#bfdbfe" stroke="#3b82f6" stroke-width="2"/>
+                                    <circle cx="44" cy="43" r="1.5" fill="#1d4ed8"/>
+                                </svg>
+                            </div>
+                            <h3 class="text-sm font-extrabold text-slate-800 mb-1.5">It Looks So Empty in Here!</h3>
+                            <p class="text-xs text-slate-400 max-w-[230px] leading-relaxed">
+                                Add one of our widgets to get started and view your business operations
+                            </p>
+                        </div>
+
+                        <div id="active-widgets-list" class="hidden flex-1 space-y-3 overflow-y-auto pr-1 mb-4"></div>
+
+                        <button type="button" onclick="openWidgetSelectorModal()" class="w-full py-3.5 px-4 rounded-xl bg-[#eef4ff] hover:bg-[#e0ebff] border border-blue-200/70 text-slate-700 font-semibold text-xs flex items-center justify-between transition-colors">
+                            <span>Add Widget of Your Choice</span>
+                            <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            <!-- ================= 2. FULL EDIT PROFILE VIEW (MATCHING SCREENSHOT 1) ================= -->
+            <section id="edit-profile-view" class="hidden flex-1 overflow-y-auto bg-white flex flex-col justify-between">
+                <div>
+                    <!-- Top Header -->
+                    <div class="px-8 py-5 border-b border-slate-200 flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-slate-800">Edit Profile</h2>
+                        <span id="profile-save-badge" class="hidden px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold">Profile Saved!</span>
+                    </div>
+
+                    <!-- 3-Column Form Grid (Matches Screenshot 1) -->
+                    <div class="p-8 max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-10">
+                        
+                        <!-- Column 1: Add Logo Circle + Business Details -->
+                        <div class="space-y-4">
+                            <!-- Circular Add Logo with Blue Progress Ring & Edit Pencil -->
+                            <div class="relative w-32 h-32 mx-auto md:mx-4 mb-6">
+                                <div onclick="document.getElementById('edit-logo-input').click()" class="w-32 h-32 rounded-full bg-[#e8f1fc] border-4 border-blue-500/80 flex items-center justify-center overflow-hidden cursor-pointer shadow-sm hover:opacity-95 transition-opacity">
+                                    <img id="edit-profile-logo-img" src="" alt="Shop Logo" class="hidden w-full h-full object-cover">
+                                    <span id="edit-profile-logo-text" class="text-sm font-bold text-slate-400 text-center leading-tight">Add<br>Logo</span>
+                                </div>
+                                <button type="button" onclick="document.getElementById('edit-logo-input').click()" class="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 flex items-center justify-center text-slate-600 hover:text-blue-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                    </svg>
+                                </button>
+                                <input type="file" id="edit-logo-input" accept="image/*" class="hidden" onchange="handleEditProfileLogo(event)">
+                            </div>
+
+                            <h3 class="text-sm font-bold text-slate-800 pb-1">Business Details</h3>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Business Name<span class="text-red-500">*</span></label>
+                                <input type="text" id="ep-business-name" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-800 outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Phone Number</label>
+                                <input type="text" id="ep-phone" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-800 outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">GSTIN</label>
+                                <input type="text" id="ep-gstin" placeholder="Enter GSTIN" maxlength="15" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-800 uppercase outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Email ID</label>
+                                <input type="email" id="ep-email" placeholder="Enter Email ID" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-800 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Column 2: More Details -->
+                        <div class="space-y-4 md:pt-36">
+                            <h3 class="text-sm font-bold text-slate-800 pb-1">More Details</h3>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Business Type</label>
+                                <select id="ep-business-type" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-700 bg-white outline-none">
+                                    <option value="">Select Business Type</option>
+                                    <option value="Retail">Retail</option>
+                                    <option value="Wholesale">Wholesale</option>
+                                    <option value="Distributor">Distributor</option>
+                                    <option value="Service">Service</option>
+                                    <option value="Manufacturing">Manufacturing</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Business Category</label>
+                                <select id="ep-business-category" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-700 bg-white outline-none">
+                                    <option value="">Select Business Category</option>
+                                    <option value="Kirana / General Merchant">Kirana / General Merchant</option>
+                                    <option value="Electronics & Hardware">Electronics &amp; Hardware</option>
+                                    <option value="Medical & Pharma">Medical &amp; Pharma</option>
+                                    <option value="Apparel & Footwear">Apparel &amp; Footwear</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">State</label>
+                                <select id="ep-state" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-700 bg-white outline-none">
+                                    <option value="">Select State</option>
+                                    <option value="Andhra Pradesh">Andhra Pradesh</option>
+                                    <option value="Delhi">Delhi</option>
+                                    <option value="Gujarat">Gujarat</option>
+                                    <option value="Karnataka">Karnataka</option>
+                                    <option value="Maharashtra">Maharashtra</option>
+                                    <option value="Rajasthan">Rajasthan</option>
+                                    <option value="Tamil Nadu">Tamil Nadu</option>
+                                    <option value="Telangana">Telangana</option>
+                                    <option value="Uttar Pradesh">Uttar Pradesh</option>
+                                    <option value="West Bengal">West Bengal</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Pincode</label>
+                                <input type="text" id="ep-pincode" placeholder="Enter Pincode" maxlength="10" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-800 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Business Address & Upload Signature -->
+                        <div class="space-y-4 md:pt-44">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Business Address</label>
+                                <textarea id="ep-address" rows="4" placeholder="Enter Business Address" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:border-blue-500 text-sm text-slate-800 outline-none resize-none"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Add Signature</label>
+                                <div onclick="document.getElementById('edit-signature-input').click()" class="h-32 rounded-lg border-2 border-dashed border-slate-300 hover:border-blue-500 flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 overflow-hidden transition-colors">
+                                    <img id="edit-signature-img" src="" alt="Signature" class="hidden max-h-28 object-contain">
+                                    <div id="edit-signature-placeholder" class="flex flex-col items-center text-slate-400">
+                                        <svg class="w-7 h-7 mb-1.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                        </svg>
+                                        <span class="text-xs font-medium">Upload Signature</span>
+                                    </div>
+                                </div>
+                                <input type="file" id="edit-signature-input" accept="image/*" class="hidden" onchange="handleEditSignature(event)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Sticky Action Bar: Cancel & Save Changes -->
+                <div class="px-8 py-4 border-t border-slate-200 bg-white flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeEditProfileView()" class="px-6 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors">
+                        Cancel
+                    </button>
+                    <button type="button" onclick="saveEditProfileChanges()" class="px-7 py-2.5 rounded-full bg-[#e11d48] hover:bg-[#be123c] text-white font-bold text-xs shadow-md shadow-rose-500/20 transition-all">
+                        Save Changes
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- ================= ADD WIDGET MODAL ================= -->
+    <div id="widget-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 opacity-0 invisible transition-all duration-200">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-base font-extrabold text-slate-900">Add Analytics Widget</h3>
+                <button type="button" onclick="closeWidgetSelectorModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">&times;</button>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">Choose widgets to pin to your right-hand shop operations panel:</p>
+            <div class="space-y-2.5 mb-2">
+                <button type="button" onclick="addDashboardWidget('cash', 'Cash & Bank Balance', 'Live Cash in Hand + Bank Ledgers')" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 text-left flex items-center justify-between transition-all">
+                    <div>
+                        <p class="text-xs font-bold text-slate-800">Cash &amp; Bank Balance</p>
+                        <p class="text-[11px] text-slate-400">Track Cash in Hand &amp; linked bank accounts</p>
+                    </div>
+                    <span class="text-blue-600 font-bold text-xs">+ Add</span>
+                </button>
+                <button type="button" onclick="addDashboardWidget('stock', 'Stock Inventory Summary', 'Total Stock Value & Low Stock Items')" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 text-left flex items-center justify-between transition-all">
+                    <div>
+                        <p class="text-xs font-bold text-slate-800">Stock Inventory Value</p>
+                        <p class="text-[11px] text-slate-400">Monitor active items &amp; low stock alerts</p>
+                    </div>
+                    <span class="text-blue-600 font-bold text-xs">+ Add</span>
+                </button>
+                <button type="button" onclick="addDashboardWidget('expenses', 'This Month Expenses', 'Total Direct & Indirect Shop Expenses')" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 text-left flex items-center justify-between transition-all">
+                    <div>
+                        <p class="text-xs font-bold text-slate-800">Monthly Expenses Breakdown</p>
+                        <p class="text-[11px] text-slate-400">Quick overview of indirect &amp; direct expenses</p>
+                    </div>
+                    <span class="text-blue-600 font-bold text-xs">+ Add</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= PIN SIDEBAR SHORTCUT MODAL (+ BUTTON NEAR ADD PURCHASE) ================= -->
+    <div id="shortcut-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 opacity-0 invisible transition-all duration-200">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-100">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-base font-extrabold text-slate-900">Pin Sidebar Shortcut</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Add any sidebar option to the top header bar with your chosen color</p>
+                </div>
+                <button type="button" onclick="closeShortcutModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">&times;</button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Select Sidebar Option</label>
+                    <select id="shortcut-option-select" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-blue-500 text-xs font-semibold text-slate-800 bg-white outline-none">
+                        <option value="Parties|parties.html">+ Parties</option>
+                        <option value="Items|items.html">+ Items &amp; Inventory</option>
+                        <option value="Payment In|payment-in.html">+ Payment In</option>
+                        <option value="Payment Out|payment-out.html">+ Payment Out</option>
+                        <option value="Expense|expenses.html">+ Expense</option>
+                        <option value="Estimate / Quotation|estimate.html">+ Estimate / Quotation</option>
+                        <option value="Sale Order|sale-order.html">+ Sale Order</option>
+                        <option value="Delivery Challan|delivery-challan.html">+ Delivery Challan</option>
+                        <option value="Sale Return|sale-return.html">+ Sale Return</option>
+                        <option value="Purchase Order|purchase-order.html">+ Purchase Order</option>
+                        <option value="Purchase Return|purchase-return.html">+ Purchase Return</option>
+                        <option value="Cash & Bank|cash-bank.html">Cash &amp; Bank</option>
+                        <option value="Reports|reports.html">Reports</option>
+                        <option value="Bulk GST Update|bulk-gst.html">Bulk GST Update</option>
+                        <option value="Utilities|utilities.html">Utilities</option>
+                        <option value="Settings|settings.html">Settings</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Choose Button Color</label>
+                    <div class="grid grid-cols-6 gap-2" id="shortcut-color-picker">
+                        <button type="button" onclick="selectShortcutColor('#059669')" data-color="#059669" class="color-swatch h-8 rounded-lg bg-[#059669] ring-2 ring-offset-2 ring-slate-900 transition-all"></button>
+                        <button type="button" onclick="selectShortcutColor('#7c3aed')" data-color="#7c3aed" class="color-swatch h-8 rounded-lg bg-[#7c3aed] transition-all"></button>
+                        <button type="button" onclick="selectShortcutColor('#ea580c')" data-color="#ea580c" class="color-swatch h-8 rounded-lg bg-[#ea580c] transition-all"></button>
+                        <button type="button" onclick="selectShortcutColor('#0284c7')" data-color="#0284c7" class="color-swatch h-8 rounded-lg bg-[#0284c7] transition-all"></button>
+                        <button type="button" onclick="selectShortcutColor('#db2777')" data-color="#db2777" class="color-swatch h-8 rounded-lg bg-[#db2777] transition-all"></button>
+                        <button type="button" onclick="selectShortcutColor('#334155')" data-color="#334155" class="color-swatch h-8 rounded-lg bg-[#334155] transition-all"></button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Pinned Header Buttons</label>
+                    <div id="pinned-shortcuts-manage-list" class="max-h-32 overflow-y-auto space-y-1.5 pr-1 text-xs text-slate-500">
+                        No custom buttons pinned yet.
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeShortcutModal()" class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-600">Cancel</button>
+                    <button type="button" onclick="addSelectedShortcut()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-colors">+ Add Button</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let companyData = {};
+        let authData = {};
+        let metaData = {};
+        let partiesList = [];
+        let itemsList = [];
+        let invoicesList = [];
+        let purchasesList = [];
+        let currencySymbol = "₹";
+        let selectedShortcutHex = "#059669";
+        let pinnedShortcuts = [];
+        let tempLogoBase64 = "";
+        let tempSignatureBase64 = "";
+
+        // ================= INDEXEDDB FILE HANDLE HELPER =================
+        function openHandleDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open('VyaparDBStorage', 1);
+                req.onupgradeneeded = () => req.result.createObjectStore('fileHandles');
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function getSavedFileHandle() {
+            try {
+                const db = await openHandleDB();
+                const tx = db.transaction('fileHandles', 'readonly');
+                const req = tx.objectStore('fileHandles').get('activeDtaHandle');
+                return new Promise((resolve) => {
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // ================= INITIALIZE DASHBOARD IMMEDIATELY =================
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadActiveDtaWorkspace();
+            populateShopIdentity();
+            computeAnalyticsMetrics();
+            loadPinnedShortcuts();
+        });
+
+        async function loadActiveDtaWorkspace() {
+            try {
+                let zip = null;
+                const b64 = sessionStorage.getItem('vyapar_active_archive_b64');
+
+                if (b64) {
+                    zip = await JSZip.loadAsync(b64, { base64: true });
+                } else {
+                    const handle = await getSavedFileHandle();
+                    if (handle) {
+                        const file = await handle.getFile();
+                        zip = await JSZip.loadAsync(file);
+                        const freshB64 = await zip.generateAsync({ type: "base64" });
+                        sessionStorage.setItem('vyapar_active_archive_b64', freshB64);
+                    }
+                }
+
+                if (zip) {
+                    if (zip.file("meta.json")) metaData = JSON.parse(await zip.file("meta.json").async("string"));
+                    if (zip.file("company.json")) companyData = JSON.parse(await zip.file("company.json").async("string"));
+                    if (zip.file("auth.json")) authData = JSON.parse(await zip.file("auth.json").async("string"));
+                    if (zip.file("parties.json")) partiesList = JSON.parse(await zip.file("parties.json").async("string"));
+                    if (zip.file("items.json")) itemsList = JSON.parse(await zip.file("items.json").async("string"));
+                    if (zip.file("invoices.json")) invoicesList = JSON.parse(await zip.file("invoices.json").async("string"));
+                    if (zip.file("purchases.json")) purchasesList = JSON.parse(await zip.file("purchases.json").async("string"));
+                } else {
+                    const localMeta = localStorage.getItem('vyapar_active_meta');
+                    if (localMeta) metaData = JSON.parse(localMeta);
+                }
+            } catch (err) {
+                console.error("Error loading .dta workspace:", err);
+            }
+        }
+
+        function populateShopIdentity() {
+            const shopName = companyData.businessName || metaData.dbName || "My Shop";
+            const ownerName = companyData.ownerName || "Admin";
+            const cityState = [companyData.city, companyData.state].filter(Boolean).join(', ') || "India";
+            const mobileNo = companyData.mobileNo || "";
+            currencySymbol = companyData.currencySymbol || "₹";
+
+            document.getElementById('sidebar-shop-name').textContent = shopName;
+            document.getElementById('sidebar-owner-name').textContent = `Owner: ${ownerName}`;
+            document.getElementById('sidebar-shop-initial').textContent = shopName.charAt(0).toUpperCase();
+
+            document.getElementById('banner-shop-name').textContent = shopName;
+            document.getElementById('banner-default-logo').textContent = shopName.charAt(0).toUpperCase();
+            document.getElementById('banner-owner-details').textContent =
+                `Owner: ${ownerName}` + (mobileNo ? ` • Mobile: ${mobileNo}` : '') + ` • ${cityState}`;
+
+            if (companyData.logo && companyData.logo.startsWith('data:image')) {
+                const sLogo = document.getElementById('sidebar-shop-logo');
+                const bLogo = document.getElementById('banner-shop-logo');
+                sLogo.src = companyData.logo;
+                bLogo.src = companyData.logo;
+                sLogo.classList.remove('hidden');
+                bLogo.classList.remove('hidden');
+                document.getElementById('sidebar-shop-initial').classList.add('hidden');
+                document.getElementById('banner-default-logo').classList.add('hidden');
+            }
+        }
+
+        function computeAnalyticsMetrics() {
+            let totalReceivable = 0;
+            let receivableCount = 0;
+            let totalPayable = 0;
+            let payableCount = 0;
+
+            partiesList.forEach(party => {
+                const bal = parseFloat(party.balance || 0);
+                if (party.balanceType === 'receivable' && bal > 0) {
+                    totalReceivable += bal;
+                    receivableCount++;
+                } else if (party.balanceType === 'payable' && bal > 0) {
+                    totalPayable += bal;
+                    payableCount++;
+                }
+            });
+
+            let totalSaleAmount = 0;
+            invoicesList.forEach(inv => {
+                totalSaleAmount += parseFloat(inv.totalAmount || inv.amount || 0);
+            });
+
+            const fmt = (val) => `${currencySymbol} ${val.toLocaleString('en-IN')}`;
+            document.getElementById('kpi-receivable').textContent = fmt(totalReceivable);
+            document.getElementById('kpi-payable').textContent = fmt(totalPayable);
+            document.getElementById('kpi-total-sale').textContent = fmt(totalSaleAmount);
+
+            if (receivableCount > 0) {
+                document.getElementById('kpi-receivable-sub').textContent = `From ${receivableCount} Party(s) to collect.`;
+            }
+            if (payableCount > 0) {
+                document.getElementById('kpi-payable-sub').textContent = `To ${payableCount} Supplier(s) to pay.`;
+            }
+        }
+
+        // ================= SIDEBAR NAVIGATION (INSTANT, NO LOADING SCREEN) =================
+        function toggleSubmenu(submenuId, chevronId) {
+            const sub = document.getElementById(submenuId);
+            const chev = document.getElementById(chevronId);
+            const isOpen = sub.classList.contains('open');
+
+            document.querySelectorAll('.submenu.open').forEach(el => el.classList.remove('open'));
+            document.querySelectorAll('[id^="chev-"]').forEach(el => el.classList.remove('rotate-180'));
+
+            if (!isOpen) {
+                sub.classList.add('open');
+                chev.classList.add('rotate-180');
+            }
+        }
+
+        function toggleMobileSidebar() {
+            document.getElementById('main-sidebar').classList.toggle('-translate-x-full');
+            document.getElementById('sidebar-backdrop').classList.toggle('hidden');
+        }
+
+        function openModulePage(targetHtml) {
+            window.location.href = targetHtml;
+        }
+
+        // ================= EDIT PROFILE SCREEN (SCREENSHOT 1) =================
+        function openEditProfileView() {
+            document.getElementById('dashboard-main-view').classList.add('hidden');
+            document.getElementById('edit-profile-view').classList.remove('hidden');
+
+            document.getElementById('ep-business-name').value = companyData.businessName || '';
+            document.getElementById('ep-phone').value = companyData.mobileNo || '';
+            document.getElementById('ep-gstin').value = companyData.gstin || '';
+            document.getElementById('ep-email').value = companyData.email || authData.email || '';
+            document.getElementById('ep-business-type').value = companyData.businessType || '';
+            document.getElementById('ep-business-category').value = companyData.businessCategory || '';
+            document.getElementById('ep-state').value = companyData.state || '';
+            document.getElementById('ep-pincode').value = companyData.pincode || '';
+            document.getElementById('ep-address').value = companyData.address || '';
+
+            tempLogoBase64 = companyData.logo || '';
+            if (tempLogoBase64) {
+                const img = document.getElementById('edit-profile-logo-img');
+                img.src = tempLogoBase64;
+                img.classList.remove('hidden');
+                document.getElementById('edit-profile-logo-text').classList.add('hidden');
+            }
+
+            tempSignatureBase64 = companyData.signature || '';
+            if (tempSignatureBase64) {
+                const sig = document.getElementById('edit-signature-img');
+                sig.src = tempSignatureBase64;
+                sig.classList.remove('hidden');
+                document.getElementById('edit-signature-placeholder').classList.add('hidden');
+            }
+        }
+
+        function closeEditProfileView(e) {
+            if (e) e.preventDefault();
+            document.getElementById('edit-profile-view').classList.add('hidden');
+            document.getElementById('dashboard-main-view').classList.remove('hidden');
+        }
+
+        function handleEditProfileLogo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                tempLogoBase64 = ev.target.result;
+                const img = document.getElementById('edit-profile-logo-img');
+                img.src = tempLogoBase64;
+                img.classList.remove('hidden');
+                document.getElementById('edit-profile-logo-text').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleEditSignature(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                tempSignatureBase64 = ev.target.result;
+                const sig = document.getElementById('edit-signature-img');
+                sig.src = tempSignatureBase64;
+                sig.classList.remove('hidden');
+                document.getElementById('edit-signature-placeholder').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function saveEditProfileChanges() {
+            companyData.businessName = document.getElementById('ep-business-name').value.trim() || companyData.businessName;
+            companyData.mobileNo = document.getElementById('ep-phone').value.trim();
+            companyData.gstin = document.getElementById('ep-gstin').value.trim().toUpperCase();
+            companyData.email = document.getElementById('ep-email').value.trim();
+            companyData.businessType = document.getElementById('ep-business-type').value;
+            companyData.businessCategory = document.getElementById('ep-business-category').value;
+            companyData.state = document.getElementById('ep-state').value;
+            companyData.pincode = document.getElementById('ep-pincode').value.trim();
+            companyData.address = document.getElementById('ep-address').value.trim();
+            companyData.logo = tempLogoBase64;
+            companyData.signature = tempSignatureBase64;
+
+            populateShopIdentity();
+
+            // Persist into .dta archive in sessionStorage + disk
+            try {
+                const b64 = sessionStorage.getItem('vyapar_active_archive_b64');
+                if (b64) {
+                    const zip = await JSZip.loadAsync(b64, { base64: true });
+                    zip.file("company.json", JSON.stringify(companyData, null, 2));
+                    const updatedB64 = await zip.generateAsync({ type: "base64", compression: "DEFLATE" });
+                    sessionStorage.setItem('vyapar_active_archive_b64', updatedB64);
+
+                    const handle = await getSavedFileHandle();
+                    if (handle) {
+                        const perm = await handle.queryPermission({ mode: 'readwrite' });
+                        if (perm === 'granted') {
+                            const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+                            const writable = await handle.createWritable();
+                            await writable.write(blob);
+                            await writable.close();
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Failed saving profile to .dta:", err);
+            }
+
+            const badge = document.getElementById('profile-save-badge');
+            badge.classList.remove('hidden');
+            setTimeout(() => {
+                badge.classList.add('hidden');
+                closeEditProfileView();
+            }, 700);
+        }
+
+        // ================= CUSTOM HEADER SHORTCUT BUTTONS (+ BUTTON) =================
+        function loadPinnedShortcuts() {
+            try {
+                const raw = localStorage.getItem('vyapar_header_shortcuts');
+                pinnedShortcuts = raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                pinnedShortcuts = [];
+            }
+            renderPinnedShortcuts();
+        }
+
+        function savePinnedShortcuts() {
+            localStorage.setItem('vyapar_header_shortcuts', JSON.stringify(pinnedShortcuts));
+            renderPinnedShortcuts();
+        }
+
+        function renderPinnedShortcuts() {
+            const barContainer = document.getElementById('custom-header-shortcuts');
+            const manageList = document.getElementById('pinned-shortcuts-manage-list');
+            barContainer.innerHTML = '';
+
+            if (pinnedShortcuts.length === 0) {
+                manageList.innerHTML = '<p class="text-xs text-slate-400 py-1">No custom buttons pinned yet.</p>';
+                return;
+            }
+
+            manageList.innerHTML = '';
+            pinnedShortcuts.forEach((item, index) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.style.backgroundColor = item.color;
+                btn.className = 'px-3.5 py-2 rounded-full text-white text-xs font-bold shadow-sm hover:opacity-90 transition-all flex items-center gap-1.5 shrink-0';
+                btn.onclick = () => openModulePage(item.url);
+                btn.innerHTML = `<span>${item.label}</span>`;
+                barContainer.appendChild(btn);
+
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200/80';
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${item.color}"></span>
+                        <span class="font-bold text-slate-700">${item.label}</span>
+                    </div>
+                    <button type="button" onclick="removePinnedShortcut(${index})" class="text-red-500 hover:text-red-700 font-bold text-xs">Remove</button>
+                `;
+                manageList.appendChild(row);
+            });
+        }
+
+        function openShortcutModal() {
+            renderPinnedShortcuts();
+            document.getElementById('shortcut-modal').classList.remove('opacity-0', 'invisible');
+        }
+
+        function closeShortcutModal() {
+            document.getElementById('shortcut-modal').classList.add('opacity-0', 'invisible');
+        }
+
+        function selectShortcutColor(hex) {
+            selectedShortcutHex = hex;
+            document.querySelectorAll('#shortcut-color-picker .color-swatch').forEach(btn => {
+                if (btn.getAttribute('data-color') === hex) {
+                    btn.classList.add('ring-2', 'ring-offset-2', 'ring-slate-900');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-offset-2', 'ring-slate-900');
+                }
+            });
+        }
+
+        function addSelectedShortcut() {
+            const selectVal = document.getElementById('shortcut-option-select').value;
+            const [label, url] = selectVal.split('|');
+
+            const exists = pinnedShortcuts.some(s => s.url === url);
+            if (!exists) {
+                pinnedShortcuts.push({
+                    label: label.startsWith('+') ? label : `+ ${label}`,
+                    url: url,
+                    color: selectedShortcutHex
+                });
+                savePinnedShortcuts();
+            }
+            closeShortcutModal();
+        }
+
+        function removePinnedShortcut(idx) {
+            pinnedShortcuts.splice(idx, 1);
+            savePinnedShortcuts();
+        }
+
+        // ================= WIDGET PANEL INTERACTIONS =================
+        function openWidgetSelectorModal() {
+            document.getElementById('widget-modal').classList.remove('opacity-0', 'invisible');
+        }
+
+        function closeWidgetSelectorModal() {
+            document.getElementById('widget-modal').classList.add('opacity-0', 'invisible');
+        }
+
+        function addDashboardWidget(type, title, subtitle) {
+            closeWidgetSelectorModal();
+            document.getElementById('widget-empty-state').classList.add('hidden');
+            const list = document.getElementById('active-widgets-list');
+            list.classList.remove('hidden');
+
+            let metricVal = `${currencySymbol} 0`;
+            if (type === 'stock') {
+                metricVal = `${itemsList.length} Items`;
+            }
+
+            const widgetCard = document.createElement('div');
+            widgetCard.className = "p-4 rounded-xl border border-slate-200 bg-slate-50/70 flex items-center justify-between animate-card";
+            widgetCard.innerHTML = `
+                <div>
+                    <p class="text-xs font-bold text-slate-800">${title}</p>
+                    <p class="text-[11px] text-slate-400">${subtitle}</p>
+                </div>
+                <span class="text-sm font-extrabold text-blue-600">${metricVal}</span>
+            `;
+            list.appendChild(widgetCard);
+        }
+
+        function updateSaleChartPeriod() {
+            const line = document.getElementById('sale-chart-line');
+            line.style.opacity = '0.3';
+            setTimeout(() => {
+                line.style.opacity = '1';
+            }, 200);
+        }
+
+        async function downloadBackupDta() {
+            const b64 = sessionStorage.getItem('vyapar_active_archive_b64');
+            if (!b64) return;
+            const zip = await JSZip.loadAsync(b64, { base64: true });
+            const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+            const fileName = metaData.fileName || `${companyData.businessName || 'company'}.dta`;
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function logoutToLogin() {
+            sessionStorage.removeItem('vyapar_logged_in_session');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>
